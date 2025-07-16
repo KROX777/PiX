@@ -1,0 +1,21 @@
+defaults:
+  - _self_
+  - problem: Fluid Mechanics
+  - override hydra/output: local
+
+hydra:
+  job:
+    name: ${problem.name}
+    chdir: True
+
+method: bfsearch  # 可选: bfsearch, mcts
+dataset_path: pix/data/2d_comp_viscose_newton_ns.npz
+verbose: True
+
+# For MCTS
+n_jobs: 10
+exploration_weight: 1.0 
+epsilon: 0.05           
+max_rollout: 30
+time_limit: 3600
+verbose_level: 2

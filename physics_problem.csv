@@ -1,0 +1,42 @@
+Fluid Mechanics,Fluid Mechanics problem with various hypotheses
+x,y,t,ux,uy,rho,p
+(void)
+F=Array([Fx; Fy]),S=0.5 * (grad(V) + transpose(grad(V))),gamma=sqrt(2*ddot(S; S)),tau=2*mu*S - 2/X_dim*mu*div(V)*I,mu=?,Fx=?,Fy=?
+conserve(rho)
+rho * conserve(V) - div(-p * I + tau) - F
+end
+1,determine_compressibility,0,false
+2,compressible_false,1,false,eq: DDt(rho),eq: norm(grad(rho))
+3,compressible_true,1,false
+4,type_body_force,0,false
+5,no_body_force,4,false,def: Fx=0,def: Fy=0
+6,gravity,4,false,def: Fx=0,def: [gy] Fy=rho*gy,constraint: [gy]abs(gy)>1
+7,determine_turbulence,0,false
+8,non_turbulent,7,false
+9,turbulent,7,false
+10,laminar,8,false
+11,creeping,8,false
+12,k-epsilon,9,false
+13,realizable k-epsilon,9,false
+14,determine_newtonian,0,false
+15,non_newtonian,14,false
+16,newtonian,14,false
+17,powerlaw(mu_app),15,false,def: [mu_k;n] mu = mu_k * (gamma)**(n-1),constraint: [mu_k] mu_k>0
+18,carreau,15,false,def: [mu_inf;mu_k;lambda_rt;n] mu = mu_inf + mu_k*(1+(lambda_rt*gamma)**2)**((n-1)/2),constraint: [mu_inf] mu_inf>0,constraint: [mu_k] mu_k + mu_inf>0,constraint: [lambda_rt] lambda_rt>0,constraint: [n] 1-n>0
+19,new_non_newtonian_1,15,false
+20,pseudoplastic,17,false,constraint: [n] 1-n>0
+21,dilatant,17,false,constraint: [n] n-1>0
+22,poly_order_type,19,false
+23,fourier_order_type,19,false
+24,poly_order_0,22,false
+25,poly_order_1,22,false,def: [mu_inf;a1]mu=mu_inf+a1*gamma
+26,poly_order_2,22,false,def: [mu_inf;a1;a2]mu=mu_inf+a1*gamma+a2*gamma**2
+27,fourier_order_0,23,false
+28,fourier_order_1,23,false,def: [mu_inf;a1;b1]mu=a1*sin(gamma)+b1*cos(gamma)
+29,fourier_order_2,23,false,def: [mu_inf;a1;b1;a2;b2]mu=a1*sin(gamma)+b1*cos(gamma)+a2*sin(2*gamma)+b2*cos(2*gamma)
+30,inviscid,16,false,def: mu=0
+31,newtonian,16,false,constraint: [mu] mu>0
+32,new_non_newtonian_2,15,true,related: mu;gamma
+end
+false
+sin(x),cos(x),log(x),1/x,sin(x)/x,cos(x)/x,log(x)/x
