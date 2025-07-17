@@ -85,6 +85,7 @@ class Calculator:
 
         # 其它设置
         self.tol = tol
+        self.dim = self.X_dim + (1 if self.has_time else 0)
         
         # 现在解析导出物理量（所有符号都已经创建）
         self._parse_derived_quantities()
@@ -93,7 +94,7 @@ class Calculator:
         self.equation_buffer = config.problem['known_equations'].copy()  # 添加 .copy()
         self.sp_equation = []
         
-        # 其它约束/不等式
+        # 约束
         self.constraints = {} # var: {"type": str, "fun": sp function}
         
         # 函数自变量
@@ -120,7 +121,10 @@ class Calculator:
             print(f"Registered new variable: {var_name}")
         else:
             print(f"Variable '{var_name}' is already registered as an unknown quantity.")
-        
+    
+    def get_unknown_var_list(self):
+        return list(self.sp_unknown_quantities.keys())
+    
     def update_unknown_var(self, var_name, expr):
         """
         Args:
@@ -326,8 +330,14 @@ class Calculator:
         def pre_process(arr):
             # clip boundary
             n_clip = 5
-            arr = arr[n_clip: -n_clip, n_clip: -n_clip, n_clip: -n_clip]
-            
+            if self.dim == 3:
+                arr = arr[n_clip: -n_clip, n_clip: -n_clip, n_clip: -n_clip]
+            elif self.dim == 2:
+                arr = arr[n_clip: -n_clip, n_clip: -n_clip]
+            elif self.dim == 1:
+                arr = arr[n_clip: -n_clip]
+            elif self.dim == 4:
+                arr = arr[n_clip: -n_clip, n_clip: -n_clip, n_clip: -n_clip, n_clip: -n_clip]
             return arr
         self.args_data = list(map(pre_process, self.args_data))
 
@@ -385,50 +395,6 @@ class Calculator:
             print(f"Generated {len(res_func_list)} numpy functions from {len(sp_res_func_list)} sympy expressions")
         
         return res_func_list
-    
-    def _print_sample_residuals(self, args, res_func):
-        """打印残差场的示例点值"""
-        print(f"\n残差场示例点值:")
-        print(f"{'位置':>15} | {'残差值':>15}")
-        print(f"{'-'*15} | {'-'*15}")
-        
-        try:
-            # 根据数据维度选择示例点
-            if len(args[0].shape) > 2:  # 3D data
-                nx, ny, nt = args[0].shape
-                # 中心点
-                center_x, center_y = nx//2, ny//2
-                for t_sample in [0, nt//2, nt-1]:
-                    if t_sample < nt:
-                        try:
-                            res_val = res_func([arg[center_x, center_y, t_sample] for arg in args], [])
-                            print(f"中心点,t={t_sample:3d} | {res_val:15.6e}")
-                        except Exception:
-                            pass
-                            
-                # 边界点
-                t_sample = nt//2
-                if t_sample < nt:
-                    try:
-                        res_val = res_func([arg[0, 0, t_sample] for arg in args], [])
-                        print(f"左下角,t={t_sample:3d} | {res_val:15.6e}")
-                    except Exception:
-                        pass
-                    try:
-                        res_val = res_func([arg[nx-1, ny-1, t_sample] for arg in args], [])
-                        print(f"右上角,t={t_sample:3d} | {res_val:15.6e}")
-                    except Exception:
-                        pass
-            else:  # 1D data处理
-                nx = args[0].shape[0]
-                for x_sample in [0, nx//2, nx-1]:
-                    try:
-                        res_val = res_func([arg[x_sample] for arg in args], [])
-                        print(f"x={x_sample:3d} | {res_val:15.6e}")
-                    except Exception:
-                        pass
-        except Exception as e:
-            print(f"计算示例点残差失败: {e}")
     
     def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train"):
         """

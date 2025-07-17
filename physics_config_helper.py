@@ -45,15 +45,15 @@ class PhysicsConfig:
         with open(csv_file, 'r', encoding='utf-8') as f:
             lines = [line.rstrip('\n') for line in f if line.strip()]
         # 1. 问题名字,简介
-        name, description = lines[0].split(',', 1)
+        name, description = lines[0].split('|', 1)
         # 2. 变量名
-        variables = [v.strip() for v in lines[1].split(',')]
+        variables = [v.strip() for v in lines[1].split('|')]
         # 3. 常量输入（一个变量名=一个值，逗号分隔）
         constants = {}
         if lines[2] == '(void)':
             constants = {}
         else:
-            for const in lines[2].split(','):
+            for const in lines[2].split('|'):
                 if '=' in const:
                     var, value = const.split('=', 1)
                     constants[var.strip()] = float(value.strip())
@@ -61,11 +61,9 @@ class PhysicsConfig:
         derived_quantities = {}
         unknown_variables = []
         if len(lines) > 3 and lines[3].strip():
-            for dq in lines[3].split(','):
+            for dq in lines[3].split('|'):
                 if '=' in dq:
                     var, expr = dq.split('=', 1)
-                    # 把expr中的;换成,
-                    expr = expr.replace(';', ',')
                     if expr.strip() == '?':
                         unknown_variables.append(var.strip())
                     derived_quantities[var.strip()] = expr.strip()
@@ -84,7 +82,7 @@ class PhysicsConfig:
             if lines[i] == 'end':
                 i += 1
                 break
-            row = [x.strip() for x in lines[i].split(',')]
+            row = [x.strip() for x in lines[i].split('|')]
             if len(row) > 1:
                 decision_tree_rows.append(row)
             i += 1
@@ -97,10 +95,10 @@ class PhysicsConfig:
         unary_functions = []
         binary_functions = []
         if i < len(lines):
-            unary_functions = [f.strip() for f in lines[i].split(',') if f.strip()]
+            unary_functions = [f.strip() for f in lines[i].split('|') if f.strip()]
             i += 1
         # if i < len(lines):
-        #     binary_functions = [f.strip() for f in lines[i].split(',') if f.strip()]
+        #     binary_functions = [f.strip() for f in lines[i].split('|') if f.strip()]
         #     i += 1
         sr_config = SymbolicRegressionConfig(function_expressions=unary_functions, allow_nesting=allow_nesting)
         self.problem = PhysicsProblem(
@@ -161,23 +159,20 @@ class PhysicsConfig:
             yaml.dump(problem_dict, f, allow_unicode=True, default_flow_style=False)
     
     def visualize_tree(self):
-        """可视化决策树"""
         from anytree import Node, RenderTree
-        if self.problem is None:
-            raise ValueError("Problem is not initialized. Call from_csv() first.")
+
+        root = Node("Root")
+        nodes = {0: root}
         
-        # 创建根节点
-        root = Node(self.problem.name)
-        nodes = {self.problem.name: root}
-        
-        # 创建所有节点
         for row in self.problem.decision_tree_rows:
-            node_name = row[1] if len(row) > 1 else "Unnamed"
-            parent_name = row[2] if len(row) > 2 else self.problem.name
-            node = Node(node_name, parent=nodes[parent_name])
-            nodes[node_name] = node
-        
-        # 打印树结构
+            node_id = int(row[0])
+            node_name = row[1] if len(row) > 1 else f"Node {node_id}"
+            nodes[node_id] = Node(node_name)
+        for row in self.problem.decision_tree_rows:
+            node_id = int(row[0])
+            parent_id = int(row[2])
+            nodes[node_id].parent = nodes[parent_id]
+            
         for pre, _, node in RenderTree(root):
             print(f"{pre}{node.name}")
 
@@ -186,3 +181,4 @@ if __name__ == "__main__":
     config.from_csv('physics_problem.csv')
     os.makedirs('pix/cfg/problem', exist_ok=True)
     config.to_yaml(f'pix/cfg/problem/{config.problem.name}.yaml')
+    config.visualize_tree()
