@@ -78,8 +78,7 @@ class DataLoader:
             t_array = None
             for var in variables:
                 if var not in data:
-                    print(f"Warning: variable '{var}' not found in data, skipping")
-                    continue
+                    raise ValueError(f"Variable '{var}' not found in data")
                 if var == 't':
                     t_array = data[var].reshape(-1)
                     continue

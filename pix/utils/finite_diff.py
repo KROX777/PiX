@@ -24,8 +24,20 @@ def FiniteDiffVand(u, dx, d=1, axis=0, poly_degree=6, use_smooth=False):
     shape = u.shape
     ux = np.zeros_like(u)
 
-    # Vandermonde Matrices
+    # Check if we have enough points for the polynomial degree
+    if n <= poly_degree:
+        poly_degree = max(1, n - 1)
+        print(f"Warning: Reduced polynomial degree to {poly_degree} due to insufficient grid points")
+
+    # Vandermonde Matrices with numerical stability
     nodes = np.array([i*dx for i in range(poly_degree+1) ])
+    
+    # Add small perturbation to avoid identical nodes
+    if dx == 0 or np.abs(dx) < 1e-12:
+        print("Warning: Grid spacing too small, using default spacing")
+        dx = 1.0
+        nodes = np.array([i*dx for i in range(poly_degree+1) ])
+    
     def monomial_deriv(i, x):
         if i == 0:
             return 0*x
@@ -34,7 +46,19 @@ def FiniteDiffVand(u, dx, d=1, axis=0, poly_degree=6, use_smooth=False):
 
     V = np.array([nodes**i for i in range(poly_degree+1)]).T
     Vprime = np.array([ monomial_deriv(i, nodes)for i in range(poly_degree+1)]).T
-    D = Vprime @ la.inv(V)
+    
+    # Use pseudo-inverse for numerical stability
+    try:
+        # Try regular inverse first
+        cond_number = la.cond(V)
+        if cond_number > 1e12:
+            print(f"Warning: Ill-conditioned Vandermonde matrix (cond={cond_number:.2e}), using pseudo-inverse")
+            D = Vprime @ la.pinv(V)
+        else:
+            D = Vprime @ la.inv(V)
+    except la.LinAlgError:
+        print("Warning: Singular Vandermonde matrix, using pseudo-inverse")
+        D = Vprime @ la.pinv(V)
 
     # --- convolution ---  i.e.  ux = convolve(u, D[poly_degree//2][::-1])
     # step0. reshape
