@@ -13,6 +13,7 @@ from pix.utils.sympy_utils import *
 from pix.utils.numpy_utils import np_grad_all, pooling
 from sklearn.model_selection import KFold
 import os
+import time
 
 class Calculator:
     def __init__(self, config, root_dir, datafold_tuple=(0,1), tol=1e-3, K=1):
@@ -118,7 +119,7 @@ class Calculator:
     def register_unknown_var(self, var_name):
         if var_name not in self.sp_unknown_quantities:
             self.sp_unknown_quantities[var_name] = sp.symbols(var_name)
-            print(f"Registered new variable: {var_name}")
+            # print(f"Registered new variable: {var_name}")
         else:
             print(f"Variable '{var_name}' is already registered as an unknown quantity.")
     
@@ -256,7 +257,7 @@ class Calculator:
                         self.sp_derived_quantities[key] = new_value
                         symbols[sp.Symbol(key)] = new_value
                         changed = True
-                        
+
         self.local_dict.update(self.sp_derived_quantities)
         self.local_dict.update(self.sp_unknown_quantities)
 
@@ -341,7 +342,7 @@ class Calculator:
             return arr
         self.args_data = list(map(pre_process, self.args_data))
 
-    def gen_np_func(self, sp_res_func_list, verbose=False):
+    def gen_np_func(self, sp_res_func_list, verbose=False, src_strs=None):
         """
         Convert sympy residual expressions to numpy functions for numerical evaluation.
         
@@ -352,51 +353,80 @@ class Calculator:
         """
         # Set up parameters list
         params = self.sp_unknown_quantities.values()
-        
         # Convert each sympy expression to a numpy function with numerical stability
         def to_np_func_stable(sp_func):
             base_func = sp.lambdify([self.args_symbols, params], sp_func, 'numpy')
             
             def stable_wrapper(args, params_vals):
-                # 添加数值稳定性检查
-                with np.errstate(over='warn', invalid='warn'):
+                # 添加数值稳定性检查，并确保结果为可处理的浮点数组
+                with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                     try:
                         result = base_func(args, params_vals)
-                        # 检查并处理异常值
-                        if np.any(np.isinf(result)):
-                            print("Warning: Infinite values detected in residual computation")
-                            result = np.where(np.isinf(result), np.sign(result) * 1e10, result)
-                        if np.any(np.isnan(result)):
-                            print("Warning: NaN values detected in residual computation")
-                            result = np.where(np.isnan(result), 0, result)
-                        return result
-                    except (OverflowError, RuntimeWarning) as e:
-                        print(f"Numerical overflow in residual computation: {e}")
+                    except Exception as e:
                         # 返回一个大但有限的值
                         return np.full_like(args[0], 1e10)
+
+                    # 尝试将结果转换为浮点数组；若为复数或无法转换，则进行降级处理
+                    try:
+                        arr = np.asarray(result)
+                        # 如果出现复数，若虚部显著则判为无效；否则取实部
+                        if np.iscomplexobj(arr):
+                            if np.any(np.abs(np.imag(arr)) > 1e-12):
+                                return np.full_like(args[0], 1e10)
+                            arr = np.real(arr)
+                        arr = arr.astype(float, copy=False)
+                    except Exception:
+                        return np.full_like(args[0], 1e10)
+
+                    # 检查并处理 NaN / Inf
+                    if np.any(~np.isfinite(arr)):
+                        # 对于无穷，保留符号，替换为大但有限的值；NaN 置 0
+                        sign = np.sign(arr)
+                        arr = np.where(np.isinf(arr), sign * 1e10, arr)
+                        arr = np.where(np.isnan(arr), 0.0, arr)
+                    return arr
             
             return stable_wrapper
         
         res_func_list = []
+        residual_labels = []  # one label per flattened residual function
         res_idx_list = []
         idx = 0
         
-        for sp_res in sp_res_func_list:
-            if hasattr(sp_res, "shape"):  # array variable
+        built = 0
+        for eq_i, sp_res in enumerate(sp_res_func_list):
+            # pick a readable source string (original equation if provided, else str of sympy expr)
+            src_label = None
+            try:
+                if src_strs is not None and eq_i < len(src_strs):
+                    src_label = str(src_strs[eq_i])
+            except Exception:
+                src_label = None
+            if src_label is None:
+                try:
+                    src_label = str(sp_res)
+                except Exception:
+                    src_label = f"expr[{eq_i}]"
+
+            if hasattr(sp_res, "shape"):  # array variable (vector/tensor)
+                # flatten over first axis length
                 res_func_list += [to_np_func_stable(i) for i in sp_res]
-                res_idx_list.append(list(range(idx, idx+len(sp_res))))
-                idx += len(sp_res)
+                # label each component
+                comp_n = len(sp_res)
+                residual_labels += [f"{src_label} [comp {k}]" for k in range(comp_n)]
+                res_idx_list.append(list(range(idx, idx+comp_n)))
+                idx += comp_n
+                built += comp_n
             else:  # scalar variable
                 res_func_list.append(to_np_func_stable(sp_res))
+                residual_labels.append(src_label)
                 res_idx_list.append([idx,])
                 idx += 1
-        
-        if verbose:
-            print(f"Generated {len(res_func_list)} numpy functions from {len(sp_res_func_list)} sympy expressions")
+                built += 1
         
         return res_func_list
     
-    def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train", sample_ratio=0.3, seed=42):
+    def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train", sample_ratio=0.3, seed=42, debug_eval=False, eval_time_budget=None):
         """
         Args:
         deci_list_len: int, length of decision dictionary for regularization.
@@ -422,7 +452,7 @@ class Calculator:
         else:
             args_data = self.valid_args
             
-        # 创建可复现的随机采样索引 - 采样多个空间区域和时间步
+    # 创建可复现的随机采样索引 - 采样多个空间区域和时间步
         np.random.seed(seed)
         if len(args_data) > 0:
             # 根据是否有时间维度确定空间维度的位置
@@ -459,7 +489,7 @@ class Calculator:
             # 时间步采样（如果有时间维度）
             if self.has_time and time_steps > 1:
                 # 采样部分时间步
-                n_time_samples = max(1, int(time_steps * sample_ratio))
+                n_time_samples = max(1, int(time_steps * sample_ratio * 0.3))
                 time_indices = np.random.choice(time_steps, size=n_time_samples, replace=False)
                 time_indices = np.sort(time_indices)  # 保持时间顺序
             else:
@@ -500,34 +530,85 @@ class Calculator:
             
             return sampled_args
 
-        res_func_list = self.gen_np_func(self.sp_equation, verbose=False)
+        t0_gen = time.time()
+        # Pass original equation strings to keep labels aligned
+        try:
+            src_eqs = list(self.equation_buffer)
+        except Exception:
+            src_eqs = None
+        res_func_list = self.gen_np_func(self.sp_equation, verbose=True, src_strs=src_eqs)
         
-        def mse_list_sampled(args, params):
-            # 先采样，再计算residual，最后pooling
-            sampled_args = sample_args(args)
+        # 预采样一次，避免每次评估都重新切片与拼接大数组
+        sampled_args = sample_args(args_data)
+
+        def mse_list_sampled_noresample(params):
+            # 直接使用预采样的 sampled_args 来计算每个 residual 的均方
             residuals = []
-            for res in res_func_list:
+            t_eval0 = time.time()
+            labels = getattr(self, "_last_residual_labels", None)
+            for i, res in enumerate(res_func_list):
+                t_i0 = time.time()
                 res_values = res(sampled_args, params)
-                
                 # 对采样区域进行pooling，保持pool_size不变
                 if len(sampled_args) > 0:
-                    # res_values的形状已经是连续区域: (sample_height, sample_width, t, ...) 或 (sample_height, sample_width, ...)
-                    # 直接对前两个空间维度应用固定的pool_size
                     pooled_res = pooling(res_values, (pool_size, pool_size))
                 else:
                     pooled_res = res_values
-                
                 residuals.append((pooled_res**2).mean())
+                if debug_eval:
+                    dt_i = time.time() - t_i0
+                    # Only print if notably slow to avoid noise
+                    if dt_i > 0.2:
+                        prefix = f"[Calc][loss][debug] residual {i}/{len(res_func_list)}"
+                        if isinstance(labels, list) and i < len(labels):
+                            try:
+                                lab = labels[i]
+                                lab = lab if len(lab) < 200 else (lab[:197] + '...')
+                                prefix += f" | {lab}"
+                            except Exception:
+                                pass
+                        print(f"{prefix} dt={dt_i:.3f}s shape={getattr(res_values, 'shape', None)}")
+                if eval_time_budget is not None and (time.time() - t_eval0) > eval_time_budget:
+                    print(f"[Calc][loss][debug] eval budget exceeded after residual {i}")
+                    break
             return residuals
         
         # pooling is applied to the first two axises of res, i.e. x and y axis
-        mse_func = lambda args, params: sum(mse_list_sampled(args, params))
+        mse_func_noresample = lambda params: sum(mse_list_sampled_noresample(params))
         
         if mode == "train":
-            loss_func = lambda params: mse_func(self.train_args, params) + reg_func(params)
-            loss_func_list = lambda params: mse_list_sampled(self.train_args, params)
+            loss_func = lambda params: mse_func_noresample(params) + reg_func(params)
+            loss_func_list = lambda params: mse_list_sampled_noresample(params)
         else:
-            loss_func = lambda params: mse_func(self.valid_args, params) + reg_func(params)
-            loss_func_list = lambda params: mse_list_sampled(self.valid_args, params)
-            
+            loss_func = lambda params: mse_func_noresample(params) + reg_func(params)
+            loss_func_list = lambda params: mse_list_sampled_noresample(params)
         return loss_func, loss_func_list
+    
+    # def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train"):
+    #     """
+    #     Args:
+    #     deci_list_len: int, length of decision dictionary for regularization.
+        
+    #     Returns:
+    #     loss_func: function, the loss function to minimize.
+    #     loss_func_list: function, returns a list of mean squared errors for each residual.
+    #     """
+    #     self.get_sp_equation()
+    #     tot_count_ops = sum( [r.count_ops() for r in self.sp_equation if hasattr(r, "count_ops")] )
+    #     reg_coefs = reg_scale * np.array([1e-5, 1e-5, 1e-7])  # reg_coefs of [len(deci_list), len(params), tot_count_ops]
+    #     reg_list = lambda params: [deci_list_len, len(params), tot_count_ops]
+    #     reg_func = lambda params: reg_coefs.dot(np.array(reg_list(params)))
+
+    #     res_func_list = self.gen_np_func(self.sp_equation, verbose=False)
+    #     mse_list = lambda args, params: [(pooling(res(args, params), (pool_size, pool_size))**2).mean()  for res in res_func_list]
+    #     # pooling is applied to the first two axises of res, i.e. x and y axis
+    #     mse_func = lambda args, params: sum(mse_list(args, params))
+        
+    #     if mode == "train":
+    #         loss_func = lambda params: mse_func(self.train_args, params) + reg_func(params)
+    #         loss_func_list = lambda params: mse_list(self.train_args, params)
+    #     else:
+    #         loss_func = lambda params: mse_func(self.valid_args, params) + reg_func(params)
+    #         loss_func_list = lambda params: mse_list(self.valid_args, params)
+            
+    #     return loss_func, loss_func_list
