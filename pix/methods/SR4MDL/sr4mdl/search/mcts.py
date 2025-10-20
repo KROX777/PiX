@@ -11,12 +11,50 @@ import nd2py as nd
 import pandas as pd
 from tqdm import tqdm
 from typing import List, Generator, Tuple, Dict
+import re
+import sys
+import os
+
+# Add the root directory to sys.path to make pix module importable
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_root_dir = os.path.join(_current_dir, '../../../../..')
+_root_dir = os.path.abspath(_root_dir)
+if _root_dir not in sys.path:
+    sys.path.insert(0, _root_dir)
+
 from ..env import simplify
 # from ..env.symbols import *
 from ..env.tokenizer import Tokenizer
 from ..model.mdlformer import MDLformer
 from .utils import preprocess, sample_Xy
 from nd2py.utils import seed_all, Timer, NamedTimer, R2_score, RMSE_score
+from pix.utils.scipy_utils import optimize_with_timeout
+
+def calculate_nesting_depth(expr):
+    """
+    计算nd2py表达式的嵌套深度
+    
+    Args:
+        expr: nd2py Symbol表达式
+        
+    Returns:
+        int: 嵌套深度，例如log(cos(log(x)))返回3
+    """
+    if expr is None:
+        return 0
+    
+    # 如果是叶子节点（变量或常数）
+    if isinstance(expr, (nd.Variable, nd.Number)):
+        return 1
+    
+    # 如果有操作数
+    if hasattr(expr, 'operands') and expr.operands:
+        # 递归计算所有操作数的深度，取最大值并加1
+        max_depth = max(calculate_nesting_depth(operand) for operand in expr.operands)
+        return max_depth + 1
+    
+    # 其他情况（比如没有操作数的特殊节点）
+    return 1
 
 class Node:
     def __init__(self, eqtrees:List[nd.Symbol]):
@@ -26,6 +64,7 @@ class Node:
         self.complexity = None
         self.reward = None
         self.r2 = None
+        self.mse = None
 
         # MC Tree part
         self.parent = None
@@ -78,10 +117,10 @@ class Node:
         copy.complexity = self.complexity
         copy.reward = self.reward
         copy.r2 = self.r2
+        copy.mse = self.mse
         copy.MDL = self.MDL
         return copy
         
-
 class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
     """
     Monte Carlo Tree Search from the sample side, only use f but not g
@@ -114,7 +153,12 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                  max_power_abs:float|None=None,
                  complexity_limit:int|None=None,
                  complexity_alpha:float=1.0,
-                 simplify_tolerance:float=1e-6,
+                 max_nesting_depth:int|None=None,
+                 calculator=None,
+                 x_name=None,
+                 y_name=None,
+                 other_params_name=None,
+                 deci_list_len=None,
                  **kwargs):
         self.tokenizer = tokenizer # Tokenizer(-100, 100, 4)
         self.model = model # DataEncoder(AttrDict({}), self.tokenizer.get_token_list(all=False))
@@ -125,6 +169,11 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.unary = [eval(x, globals(), nd.__dict__) if isinstance(x, str) else x for x in unary]
         self.leaf = [nd.Number(x) if isinstance(x, float) else x for x in leaf]
         self.variables = []
+        
+        # Debug: Print actual operators being used
+        print(f"[MCTS DEBUG] Binary operators: {[str(x) for x in self.binary]}")
+        print(f"[MCTS DEBUG] Unary operators: {[str(x) for x in self.unary]}")
+        print(f"[MCTS DEBUG] Leaf constants: {[str(x) for x in self.leaf]}")
 
         self.const_range = const_range
         self.child_num = child_num
@@ -154,10 +203,60 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.max_power_abs = max_power_abs
         self.complexity_limit = complexity_limit
         self.complexity_alpha = complexity_alpha
-    self.simplify_tolerance = simplify_tolerance
+        self.max_nesting_depth = max_nesting_depth
+        
+        self.calculator = calculator
+        self.y_name = y_name
+        self.x_name = x_name
+        self.other_params_name = other_params_name
+        self.deci_list_len = deci_list_len
+        
+        # 添加优化结果的缓存机制
+        self.optimization_cache = {}
+        
     # always simplify best expression (original behavior)
         if kwargs:
             self.logger.warning('Unknown args: %s', ', '.join(f'{k}={v}' for k,v in kwargs.items()))
+
+    def _compute_expression_hash(self, node: Node) -> str:
+        """
+        计算表达式的hash值，用于缓存优化结果
+        """
+        import hashlib
+        
+        # 将表达式列表转换为字符串表示
+        expr_strs = []
+        for eq in node.eqtrees:
+            if hasattr(eq, "to_str"):
+                expr_str = eq.to_str()
+            else:
+                expr_str = str(eq)
+            expr_strs.append(expr_str)
+        
+        # 排序以确保相同表达式集合的hash一致
+        expr_strs.sort()
+        
+        # 组合所有表达式字符串
+        combined_str = "|".join(expr_strs)
+        
+        # 计算hash
+        return hashlib.md5(combined_str.encode()).hexdigest()
+
+    def get_cache_stats(self) -> dict:
+        """
+        获取缓存统计信息
+        """
+        return {
+            'cache_size': len(self.optimization_cache),
+            'cached_expressions': list(self.optimization_cache.keys())
+        }
+    
+    def clear_cache(self):
+        """
+        清空缓存
+        """
+        self.optimization_cache.clear()
+        print("优化结果缓存已清空")
 
     def __repr__(self):
         res = 'None' if self.eqtree is None else self.eqtree.to_str()
@@ -172,6 +271,10 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         """
         seed_all(self.random_state)
         n_iter = n_iter or self.n_iter
+        
+        # 打印缓存统计信息
+        # cache_stats = self.get_cache_stats()
+        # print(f"[缓存统计] 开始训练，当前缓存中有 {cache_stats['cache_size']} 个已优化的表达式")
 
         # Preprocess
         X = preprocess(X)
@@ -201,58 +304,31 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             self.step_timer.add(1)
 
             if self.best is None or best_simulated.reward > self.best.reward:
-                # 1) 复制并根据当前(未简化)phi计算reward/r2
                 self.best = best_simulated.copy()
                 self.set_reward(self.best, X, y)
-                raw_r2 = self.best.r2
-                raw_complexity = self.best.complexity
-                # 2) 简化表达式；原代码未在简化后重新计算R2, 导致最终predict的R2与迭代日志不同
+                # original behavior: always simplify
                 self.eqtree = simplify(self.best.phi)
-                try:
-                    y_pred_simplified = self.eqtree.eval(X)
-                    y_pred_simplified[~np.isfinite(y_pred_simplified)] = 0
-                    simplified_r2 = R2_score(y, y_pred_simplified)
-                except Exception:
-                    simplified_r2 = raw_r2  # 失败时退回
-                # 如果简化后性能下降超过容忍度, 回退到未简化表达式
-                if simplified_r2 + self.simplify_tolerance < raw_r2:
-                    self.eqtree = self.best.phi  # 使用未简化表达式
-                    simplified_r2 = raw_r2
-                # 保存两个版本, 便于对比/分析
-                self.best.r2_raw = raw_r2
-                self.best.r2_simplified = simplified_r2
-                self.best.complexity_raw = raw_complexity
-                self.best.complexity_simplified = len(self.eqtree)
-                # 为了保持一致, 用简化后的指标作为最终记录 (也可以选择raw_r2, 这里给出显式字段)
-                record['complexity'] = self.best.complexity_simplified
-                record['complexity_raw'] = self.best.complexity_raw
+                record['complexity'] = self.best.complexity
                 record['reward'] = self.best.reward
-                record['r2'] = simplified_r2
-                record['r2_raw'] = raw_r2
+                record['r2'] = self.best.r2
+                record['mse'] = self.best.mse
                 record['MDL'] = self.best.MDL
                 record['eqtree'] = str(self.best)
-                record['eqtree_simplified'] = str(self.eqtree)
-                stop = early_stop(simplified_r2, self.best.complexity_simplified, self.eqtree)
+                stop = early_stop(self.best.r2, self.best.complexity, self.best.phi)
 
             if (not iter % self.log_per_iter) or (self.step_timer.time > self.log_per_sec) or (iter == n_iter) or (stop):
                 record['speed'] = (str(self.step_timer), str(self.view_timer))
                 record['detailed_time'] = str(self.named_timer)
                 
-                log['Reward'] = f"{self.best.reward:.5f}"
-                # 如果存在双版本复杂度/R2, 一并输出
-                if 'r2_raw' in record:
-                    log['R2(raw->simp)'] = f"{record['r2_raw']:.5f}->{record['r2']:.5f}"
-                    log['Complexity(raw->simp)'] = f"{record['complexity_raw']}->{record['complexity']}"
-                else:
-                    log['R2'] = f"{self.best.r2:.5f}"
-                    log['Complexity'] = self.best.complexity
-                log['MDL'] = f"{self.best.MDL:.5f}"
-                log['Best(Node)'] = str(self.best)
-                log['Equation(raw)'] = str(self.best.phi)
-                if 'eqtree_simplified' in record:
-                    log['Equation(simplified)'] = str(self.eqtree)
-                speed0, speed1 = record['speed']
-                log['Speed'] = f"{speed0} ({speed1})"
+                log['Reward'] = f'{self.best.reward:.5f}'
+                log['Complexity'] = self.best.complexity
+                log['R2'] = f'{self.best.r2:.5f}'
+                if self.best.mse is not None:
+                    log['MSE'] = f'{self.best.mse:.5f}'
+                log['MDL'] = f'{self.best.MDL:.5f}'
+                log['Best'] = str(self.best)
+                log['Best equation'] = str(self.best.phi)
+                log['Speed'] = f'{record['speed'][0]} ({record['speed'][1]})'
                 log['Time'] = record['detailed_time']
                 log['Current'] = str(expand)
                 self.logger.info(' | '.join(f'\033[4m{k}\033[0m: {v}' for k, v in log.items()))
@@ -265,6 +341,11 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             if stop:
                 self.logger.note(f'Early stopping at iter {iter} with R2 {self.best.r2} ({self.best.eqtrees})')
                 break
+        
+        # 打印最终缓存统计信息
+        final_cache_stats = self.get_cache_stats()
+        print(f"[缓存统计] 训练结束，缓存中共有 {final_cache_stats['cache_size']} 个已优化的表达式")
+        
         # self.logger.info(expand.to_route(3, self.c))
 
     def predict(self, X:np.ndarray|pd.DataFrame|Dict[str,np.ndarray]) -> np.ndarray:
@@ -301,6 +382,57 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         if len(state.eqtrees) == 1 and isinstance(eqtree, nd.Empty): return False
         if sum(len(eqtree) for i, eqtree in enumerate(state.eqtrees) if i != idx) + len(eqtree) > self.max_len: return False
         if idx < self.keep_vars: return False
+        
+        # 检查嵌套深度限制
+        if self.max_nesting_depth is not None:
+            nesting_depth = calculate_nesting_depth(eqtree)
+            if nesting_depth > self.max_nesting_depth:
+                return False
+        
+        # 检查是否已存在相同的表达式（避免重复项如 b1*gamma + b2*gamma）
+        if not isinstance(eqtree, nd.Empty):
+            # 将表达式转换为字符串进行比较
+            new_expr_str = eqtree.to_str() if hasattr(eqtree, 'to_str') else str(eqtree)
+            for i, existing_eqtree in enumerate(state.eqtrees):
+                if i != idx:  # 不与自己比较
+                    existing_expr_str = existing_eqtree.to_str() if hasattr(existing_eqtree, 'to_str') else str(existing_eqtree)
+                    if new_expr_str == existing_expr_str:
+                        # print(f"[MCTS DEBUG] 阻止重复表达式: {new_expr_str}")  # 可以取消注释来查看被阻止的重复项
+                        return False
+        
+        # 检查并阻止无意义的表达式（如 x/x, x-x, x*1, x+0 等）
+        if not isinstance(eqtree, nd.Empty) and hasattr(eqtree, 'operands') and eqtree.operands:
+            if len(eqtree.operands) == 2:  # 二元操作
+                left, right = eqtree.operands
+                left_str = left.to_str() if hasattr(left, 'to_str') else str(left)
+                right_str = right.to_str() if hasattr(right, 'to_str') else str(right)
+                
+                # 检查 x/x, x-x 类型的表达式
+                if isinstance(eqtree, (nd.Div, nd.Sub)) and left_str == right_str:
+                    # print(f"[MCTS DEBUG] 阻止无意义表达式: {left_str} {type(eqtree).__name__} {right_str}")
+                    return False
+                
+                # 检查 x*1, 1*x 类型的表达式 (乘以1是冗余的)
+                if isinstance(eqtree, nd.Mul):
+                    if (isinstance(left, nd.Number) and abs(left.value - 1.0) < 1e-10) or \
+                       (isinstance(right, nd.Number) and abs(right.value - 1.0) < 1e-10):
+                        # print(f"[MCTS DEBUG] 阻止乘以1的表达式: {left_str} * {right_str}")
+                        return False
+                
+                # 检查 x+0, 0+x 类型的表达式 (加0是冗余的)
+                if isinstance(eqtree, nd.Add):
+                    if (isinstance(left, nd.Number) and abs(left.value) < 1e-10) or \
+                       (isinstance(right, nd.Number) and abs(right.value) < 1e-10):
+                        # print(f"[MCTS DEBUG] 阻止加0的表达式: {left_str} + {right_str}")
+                        return False
+                
+                # 检查 x*0, 0*x 类型的表达式 (乘以0结果为0，通常不希望出现)
+                if isinstance(eqtree, nd.Mul):
+                    if (isinstance(left, nd.Number) and abs(left.value) < 1e-10) or \
+                       (isinstance(right, nd.Number) and abs(right.value) < 1e-10):
+                        # print(f"[MCTS DEBUG] 阻止乘以0的表达式: {left_str} * {right_str}")
+                        return False
+        
         return True
 
     def iter_valid_action(self, state:Node, shuffle=False) -> Generator[Tuple[nd.Symbol,int],None,None]:
@@ -405,56 +537,166 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
 
     def set_reward(self, node:Node, X:Dict[str,np.ndarray], y:np.ndarray) -> float:
         self.view_timer.add(1)
-
         if self.train_eval_split < 1.0:
             train_idx = np.random.rand(y.shape[0]) < self.train_eval_split
             eval_idx = ~train_idx
         else:
             train_idx = np.ones_like(y).astype(bool)
             eval_idx = train_idx
-
-        # Calculate Z
-        Z = np.zeros((y.shape[0], 1+len(node.eqtrees)))
-        Z[:, 0] = 1.0
-        for idx, eqtree in enumerate(node.eqtrees, 1):
-            try:
-                Z[:, idx] = eqtree.eval(X)
-            except:
-                Z[:, idx] = np.nan
-        Z[~np.isfinite(Z)] = 0
-
+        if isinstance(self.other_params_name, list) and self.y_name in self.other_params_name:
+            self.other_params_name.remove(self.y_name)
         # linear model as phi
-        try:
-            assert np.isfinite(Z).all()
+        if self.calculator is not None:
+            # self.calculator.register_unknown_var('b0')
+            # self.calculator.register_unknown_var('b1')
+            # self.calculator.register_unknown_var('b2')
+            # self.calculator.register_unknown_var('b3')
+            # self.calculator.register_unknown_var('b4')
+            # self.calculator.update_unknown_var('mu', 'b0 + b1*cos(gamma) + b2*cos(log(gamma)) + b3*log(cos(log(gamma))) + b4*gamma')
+            # self.calculator.upd_local_dict()
+            # train_loss_func, mse_list_train = self.calculator.get_loss_func(deci_list_len=self.deci_list_len)
+            
+            # init_params = np.random.rand(len(self.calculator.sp_unknown_quantities))
+            
+            # params_constr = self.calculator.constraints
+            # for i, constr_list in enumerate(params_constr.values()):
+            #     for c in constr_list:
+            #         if "init" in c:
+            #             init_params[i] += c["init"]
+            
+            # print("Hello")
+            # sol = optimize_with_timeout(train_loss_func, init_params, self.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
+    
+            # print(sol['x'], sol['fun'])
+            # a = input("Press Enter to continue...")
+            # 检查缓存，避免重复优化相同的表达式
+            expr_hash = self._compute_expression_hash(node)
+            if expr_hash in self.optimization_cache:
+                # 使用缓存的结果
+                cached_result = self.optimization_cache[expr_hash]
+                sol = cached_result['sol']
+                node.r2 = cached_result['r2']
+                node.mse = cached_result['mse']
+                A = cached_result['A']
+                print(f"[CACHE HIT] 使用缓存的优化结果，hash: {expr_hash[:8]}...")
+            else:
+                import copy
+                og_calc = copy.deepcopy(self.calculator)
+                if len(self.other_params_name) > 0:
+                    raise NotImplementedError('other_params is not supported yet')
+                # Convert an nd2py expression tree to a readable string.
+                # Prefer the built-in to_str; fallback to a minimal recursive mapping.
+                def transfer_nd_expr_to_str(expr, number_format: str = ".6g") -> str:
+                    if expr is None:
+                        return "0"
+                    if hasattr(expr, "to_str"):
+                        return expr.to_str(number_format=number_format)
+                    if isinstance(expr, nd.Number):
+                        return str(expr.value)
+                    if isinstance(expr, nd.Variable):
+                        return expr.name
+                    raise ValueError(f'Cannot convert {expr} to str')
+
+                # 1) Build a linear template: y ≈ b0 + Σ bi * fi(x)
+                fi_strs = [transfer_nd_expr_to_str(eq) for eq in node.eqtrees]
+
+                # If self.x_name is provided (a list), remap variable names inside fi_strs
+                # to the calculator's expected variable names. Map by order of self.variables.
+                if self.x_name is not None and isinstance(self.x_name, (list, tuple)):
+                    src_names = [v.name for v in self.variables]
+                    # build mapping: src -> dst (only for indices available)
+                    name_map = {}
+                    for i, dst in enumerate(self.x_name):
+                        if i < len(src_names):
+                            name_map[src_names[i]] = dst
+                    if name_map:
+                        # perform whole-word replacements
+                        def replace_vars(s: str) -> str:
+                            for src, dst in name_map.items():
+                                s = re.sub(rf"\b{re.escape(src)}\b", dst, s)
+                            return s
+                        fi_strs = [replace_vars(s) for s in fi_strs]
+                n_coef = 1 + len(fi_strs)
+                coef_names = ["b0"] + [f"b{i}" for i in range(1, n_coef)]
+
+                # 2) Register unknown coefficients to the calculator
+                for name in coef_names:
+                    self.calculator.register_unknown_var(name)
+
+                # 3) Compose expression string with those coefficients
+                expr_terms = [coef_names[0]] + [f"{coef_names[i+1]}*({fi})" for i, fi in enumerate(fi_strs)]
+                expr_str = " + ".join(expr_terms) if expr_terms else "0"
+                self.calculator.update_unknown_var(self.y_name, expr_str)
+                self.calculator.upd_local_dict()
+                train_loss_func, mse_list_train = self.calculator.get_loss_func(deci_list_len=self.deci_list_len)
+                unk_list = list(self.calculator.sp_unknown_quantities.keys())
+                n_params = len(unk_list)
+                init_params = np.random.rand(n_params)
+            
+            
+                # 执行优化并缓存结果
+                sol = optimize_with_timeout(
+                    train_loss_func,
+                    init_params,
+                    self.calculator.get_constr_dict_list(),
+                    prev_sol_best=None,
+                    verbose=True,
+                )
+                # 计算结果
+                node.r2 = 1 / (1 + sol['fun'])    # Not r2, actually MSE loss
+                node.mse = sol['fun']
+                try:
+                    print("Total MSE: ", sol['fun'])
+                    A = np.array(sol['x'])
+                    
+                    # 缓存结果
+                    self.optimization_cache[expr_hash] = {
+                        'sol': sol,
+                        'r2': node.r2,
+                        'mse': node.mse,
+                        'A': A
+                    }
+                    # print(f"[CACHE STORE] 存储优化结果到缓存，hash: {expr_hash[:8]}...")
+                except:
+                    raise ValueError('Optimization failed')
+                    
+                # print(sol['x'])
+                self.calculator = copy.deepcopy(og_calc)
+        else:
+            # Calculate Z
+            Z = np.zeros((y.shape[0], 1+len(node.eqtrees)))
+            Z[:, 0] = 1.0
+            for idx, eqtree in enumerate(node.eqtrees, 1):
+                try:
+                    Z[:, idx] = eqtree.eval(X)
+                except:
+                    Z[:, idx] = np.nan
+            Z[~np.isfinite(Z)] = 0
             A, _, _, _ = np.linalg.lstsq(Z[train_idx, :], y[train_idx], rcond=None)
             A = np.round(A, 6)
             node.r2 = R2_score(y[eval_idx], Z[eval_idx, :] @ A)
-            node.phi = nd.Number(A[0]) if A[0] != 0 else None
-            for a, op in zip(A[1:], node.eqtrees):
-                if a == 0: pass
-                elif a == 1: 
-                    if node.phi is None: node.phi = op
-                    else: node.phi += op
-                elif a == -1:
-                    if node.phi is None: node.phi = -op
-                    else: node.phi -= op
-                else: 
-                    if node.phi is None: node.phi = nd.Number(a) * op
-                    else: node.phi += nd.Number(a) * op
-            if node.phi is None: node.phi = nd.Number(0.0)
-            node.complexity = len(node.phi)
-            penalty_complexity = node.complexity
-            if self.complexity_limit is not None and penalty_complexity > self.complexity_limit:
-                node.r2 = -np.inf
-                node.reward = 0.0
-                return 0.0
-            node.reward = self.eta ** (self.complexity_alpha * penalty_complexity) / (2 - node.r2)
-        except Exception as e:
-            self.logger.warning(traceback.format_exc())
+            node.mse = None
+        
+        node.phi = nd.Number(A[0]) if A[0] != 0 else None
+        for a, op in zip(A[1:], node.eqtrees):
+            if a == 0: pass
+            elif a == 1: 
+                if node.phi is None: node.phi = op
+                else: node.phi += op
+            elif a == -1:
+                if node.phi is None: node.phi = -op
+                else: node.phi -= op
+            else: 
+                if node.phi is None: node.phi = nd.Number(a) * op
+                else: node.phi += nd.Number(a) * op
+        if node.phi is None: node.phi = nd.Number(0.0)
+        node.complexity = len(node.phi)
+        penalty_complexity = node.complexity
+        if self.complexity_limit is not None and penalty_complexity > self.complexity_limit:
             node.r2 = -np.inf
-            node.complexity = np.inf
             node.reward = 0.0
-
+            return 0.0
+        node.reward = self.eta ** (self.complexity_alpha * penalty_complexity) / (2 - node.r2)
 
         # prod model as phi: y = phi(f1, f2, ...) = a0 * |f1|^a1 * |f2|^a2 * ...
         try:

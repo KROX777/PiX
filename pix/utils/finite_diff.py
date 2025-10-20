@@ -32,12 +32,8 @@ def FiniteDiffVand(u, dx, d=1, axis=0, poly_degree=6, use_smooth=False):
     # Vandermonde Matrices with numerical stability
     nodes = np.array([i*dx for i in range(poly_degree+1) ])
     
-    # Add small perturbation to avoid identical nodes
     if dx == 0 or np.abs(dx) < 1e-12:
-        print("Warning: Grid spacing too small, using default spacing")
-        print(dx, u)
-        dx = 1.0
-        nodes = np.array([i*dx for i in range(poly_degree+1) ])
+        raise ValueError(f"Warning: Grid spacing too small: {dx}")
     
     def monomial_deriv(i, x):
         if i == 0:
@@ -53,7 +49,6 @@ def FiniteDiffVand(u, dx, d=1, axis=0, poly_degree=6, use_smooth=False):
         # Try regular inverse first
         cond_number = la.cond(V)
         if cond_number > 1e12:
-            # print(f"Warning: Ill-conditioned Vandermonde matrix (cond={cond_number:.2e}), using pseudo-inverse")
             D = Vprime @ la.pinv(V)
         else:
             D = Vprime @ la.inv(V)

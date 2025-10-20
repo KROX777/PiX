@@ -306,8 +306,8 @@ symbolic_regression_config:
   
   # 操作符配置
   binary_ops: ['Add', 'Mul', 'Pow']
-  unary_ops: ['Sin', 'Cos', 'Log', 'Exp']
-  leaf_ops: [0.01, -1]
+  unary_ops: ['Cos']
+  leaf_ops: [1]
   
   # 搜索参数
   sample_num: 512                    # 采样点数量
@@ -328,9 +328,10 @@ symbolic_regression_config:
   complexity_limit: null             # 复杂度硬限制
   
   # 模型参数
-  disable_prod_model: false          # 是否禁用乘积模型
+  disable_prod_model: true           # 是否禁用乘积模型
   max_power_abs: 3                   # 幂次绝对值限制 (防止负幂问题)
   max_len: 30                        # 表达式最大长度
+  max_nesting_depth: 3               # 最大嵌套深度限制 (例如: log(cos(log(x)))是3层)
   
   # 数据处理参数
   normalize_y: false                 # 是否归一化 y

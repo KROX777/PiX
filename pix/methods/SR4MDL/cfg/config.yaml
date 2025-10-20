@@ -1,0 +1,81 @@
+# Full example config for SR4MDL search
+# This file preserves the original parser defaults and merges the
+# CLI values provided by the user. Edit values as needed.
+
+# General / dataset / experiment
+dataset: 'default'
+name: 'demo1'
+seed: 0
+
+# Training / model (defaults taken from original parser)
+tot_steps: 300000
+device: 'cuda'          # 'cpu' | 'cuda' | 'cuda:0' | 'auto' | 'cuda:0,1,2'
+continue_from: null
+load_model: 'weights/checkpoint.pth'
+lr: 0.001
+batch_size: 10
+warmup_steps: 100
+dropout: 0.1
+d_model: 512
+d_input: 64
+d_output: 512
+n_TE_layers: 8
+max_len: 30           # search max length (user-specified)
+max_param: 5
+max_var: 10
+quiet: false
+save_equations: 0
+AMP: false
+grad_clip: null
+uniform_sample_number: 400
+pred_loss_weight: 1.0
+clip_loss_weight: 1.0
+num_workers: 0
+
+# Simplify / normalization flags (defaults were True in parser)
+simplify: true
+normalize_loss: true
+normalize_X: true
+normalize_y: true
+
+# ----------------- Search-specific options -----------------
+# Target function: either an equation 'f=...' or a dataset name
+function: 'f=0.1*x**0.3'
+
+# Data sampling
+domain: 'x1:1,20'
+avoid_zero_eps: 0.05
+sample_num: 512
+
+# MCTS / search hyperparameters
+n_iter: 500
+c: 1.0
+child_num: 50
+n_playout: 10
+d_playout: 5
+eta: 0.999
+complexity_alpha: 1.0
+complexity_limit: null
+
+# Behavior flags
+keep_vars: true
+normalize_all: false
+remove_abnormal: true
+use_old_model: false
+cheat: false
+
+# Estimator / fitting options
+disable_prod_model: true
+max_power_abs: null
+max_nesting_depth: 3
+extra_leaf: ''
+
+# Custom operators (comma-separated strings); use 'pi' or 'e' in leaf list if desired
+custom_binary_ops: 'Add,Mul,Div'
+custom_unary_ops: 'Cos,Log,Sin'
+custom_leaf_ops: ''
+use_custom_ops_only: true
+
+# End of config
+
+

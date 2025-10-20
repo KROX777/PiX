@@ -234,7 +234,7 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
             from methods.BFSearch import single_test
             print("使用 BFSearch 模式")
         elif mode.lower() == "bfsearch_new_sr":
-            from methods.BFSearch_new_SR import single_test
+            from pix.methods.BFSearch_new_SR import single_test
             print("使用 BFSearch_new_SR 模式")
         else:
             print(f"错误: 未知的模式 '{mode}'，支持的模式: 'bfsearch', 'bfsearch_new_sr'")

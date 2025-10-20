@@ -108,7 +108,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, STR
     
     is_STR_coefs = np.array(["_STR_coef" in p for p in tree.calculator.sp_unknown_quantities.keys()]) #boolean array
     if len(SR_list) == 0 or STR_iter_max <= 0: #ordinary solver
-        sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best={"fun":1e-3, "nit":5}, verbose=True)
+        sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
     else: # STRidge solver
         params_name = list(tree.calculator.sp_unknown_quantities.keys())
         #--- hyper-params---

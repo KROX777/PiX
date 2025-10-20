@@ -10,57 +10,94 @@ import numpy as np
 import nd2py as nd2
 import pandas as pd
 from socket import gethostname
-from argparse import ArgumentParser
+import sys
+import os as _os
 from setproctitle import setproctitle
 from nd2py.utils import seed_all, init_logger, AutoGPU, AttrDict
-from sr4mdl.utils import parse_parser, RMSE_score, R2_score
+import importlib
+import importlib.util
+import types
+
+# Ensure local `sr4mdl` package is importable even when not installed system-wide.
+try:
+    # try a normal import first
+    import sr4mdl  # noqa: F401
+except Exception:
+    # If import fails, attempt to add the local SR4MDL folder to sys.path and retry
+    _local_pkg_dir = os.path.join(os.path.dirname(__file__), 'sr4mdl')
+    if os.path.isdir(_local_pkg_dir):
+        if os.path.dirname(__file__) not in sys.path:
+            sys.path.insert(0, os.path.dirname(__file__))
+        try:
+            import sr4mdl  # noqa: F401
+        except Exception:
+            # As a final fallback, synthesize a package module and load common submodules
+            pkg = types.ModuleType('sr4mdl')
+            pkg.__path__ = [_local_pkg_dir]
+            sys.modules['sr4mdl'] = pkg
+            # attempt to load subpackages used below: utils, search, model, env
+            for sub in ('utils', 'search', 'model', 'env'):
+                sub_path = os.path.join(_local_pkg_dir, sub)
+                # if it's a package directory, ensure Python can find it via package __path__
+                if os.path.isdir(sub_path):
+                    # no-op: having sr4mdl in sys.modules with __path__ is usually enough
+                    continue
+                # if it's a single file module like utils.py, import it directly
+                mod_file = os.path.join(_local_pkg_dir, f'{sub}.py')
+                if os.path.isfile(mod_file):
+                    spec = importlib.util.spec_from_file_location(f'sr4mdl.{sub}', mod_file)
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    sys.modules[f'sr4mdl.{sub}'] = module
+
+# Now perform the imports that expect a top-level `sr4mdl` package
+from sr4mdl.utils import RMSE_score, R2_score
 from sr4mdl.search import MCTS4MDL
 from sr4mdl.model import MDLformer
 from sr4mdl.env import sympy2eqtree, str2sympy, Tokenizer
 
 
-parser = ArgumentParser()
-parser.add_argument('-f', '--function', type=str, default='f=x1+x2*sin(x3)', help='`f=...\' or `Feynman_xxx\'')
-parser.add_argument('-n', '--name', type=str, default=None)
-parser.add_argument('-s', '--seed', type=int, default=0)
-parser.add_argument('--device', type=str, default='auto')
-parser.add_argument('--sample_num', type=int, default=200)
-parser.add_argument('--c', type=float, default=1.41)
-parser.add_argument('--max_len', type=int, default=30)
-parser.add_argument('--n_iter', type=int, default=10000)
-parser.add_argument('--max_var', type=int, default=10)
-parser.add_argument('--load_model', type=str, default='./weights/checkpoint.pth')
-parser.add_argument('--quiet', action='store_true')
-parser.add_argument('--keep_vars', action='store_true')
-parser.add_argument('--normalize_y', action='store_true')
-parser.add_argument('--normalize_all', action='store_true')
-parser.add_argument('--remove_abnormal', action='store_true')
-parser.add_argument('--use_old_model', action='store_true')
-parser.add_argument('--cheat', action='store_true')
-parser.add_argument('--domain', type=str, default='-5,5',
-                    help="Sampling domain. Format: 'low,high' applied to all vars or 'x1:low,high;x2:low,high'.")
-parser.add_argument('--avoid_zero_eps', type=float, default=0.0,
-                    help='If >0, resample any sampled value with |x| < eps (avoid log/division issues).')
-parser.add_argument('--eta', type=float, default=0.999, help='Complexity decay factor in reward.')
-parser.add_argument('--child_num', type=int, default=50, help='Max children expanded per node.')
-parser.add_argument('--n_playout', type=int, default=100, help='Number of playout simulations per expansion.')
-parser.add_argument('--d_playout', type=int, default=10, help='Depth per playout.')
-parser.add_argument('--extra_leaf', type=str, default='', help='Extra numeric constants, comma separated, e.g. "0.01,0.1,10"')
-parser.add_argument('--disable_prod_model', action='store_true', help='Disable multiplicative (prod/exp) model fitting.')
-parser.add_argument('--max_power_abs', type=float, default=None, help='Clip absolute value of exponents in product model.')
-parser.add_argument('--complexity_limit', type=int, default=None, help='Hard cap: expressions with complexity above get zero reward.')
-parser.add_argument('--complexity_alpha', type=float, default=1.0, help='Scale complexity inside eta exponent: eta^(alpha*complexity).')
-parser.add_argument('--custom_binary_ops', type=str, default='', 
-                    help='Manually specify binary operators, comma separated. e.g. "Add,Mul,Sub,Div". Available: Add,Sub,Mul,Div,Pow')
-parser.add_argument('--custom_unary_ops', type=str, default='', 
-                    help='Manually specify unary operators, comma separated. e.g. "Sin,Cos,Log,Exp". Available: Sin,Cos,Tan,Log,Exp,Sqrt,Inv,Neg,Pow2,Pow3,Arcsin,Arccos,Cot,Tanh')
-parser.add_argument('--custom_leaf_ops', type=str, default='', 
-                    help='Manually specify leaf constants, comma separated. e.g. "1,2,3.14159,2.718". Use "pi" for π, "e" for Euler number')
-parser.add_argument('--use_custom_ops_only', action='store_true', 
-                    help='If set, use only the manually specified operators (ignore auto-detected ones)')
+config_path = os.path.join(os.path.dirname(__file__), 'cfg', 'config.yaml')
 
+# temporary logger for config loading before init_logger sets up file handlers
+logger = logging.getLogger('sr4mdl.search')
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
 
-args = parse_parser(parser, save_dir='./results/search/')
+# Load config file and build args (config keys provide defaults). Support JSON or YAML.
+if not config_path:
+    logger.error('No config path available. Set SR4MDL_CONFIG or provide a default config file.')
+    raise SystemExit(1)
+if not _os.path.exists(config_path):
+    logger.error(f'Config file not found: {config_path}')
+    raise SystemExit(1)
+try:
+    with open(config_path, 'r') as f:
+        if config_path.lower().endswith('.json'):
+            cfg = json.load(f)
+        else:
+            cfg = yaml.safe_load(f)
+    if not isinstance(cfg, dict):
+        raise ValueError('Config file must contain a mapping at top level')
+except Exception as e:
+    logger.error(f'Failed to load config file {config_path}: {e}')
+    raise
+
+# normalize cfg
+if cfg is None:
+    cfg = {}
+
+# Build args from config (simple: use config values, fallback to timestamp/0)
+args = AttrDict(cfg if cfg is not None else {})
+args.name = args.get('name') or time.strftime('%Y%m%d_%H%M%S')
+try:
+    args.seed = int(args.get('seed', 0))
+except Exception:
+    args.seed = 0
+
+# ensure save_dir exists
+args.save_dir = os.path.join('./results/search/', args.name)
+os.makedirs(args.save_dir, exist_ok=True)
 
 init_logger('sr4mdl', args.name, os.path.join(args.save_dir, 'info.log'))
 logger = logging.getLogger('sr4mdl.search')
@@ -129,8 +166,7 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     
     return binary_ops, unary_ops, leaf_ops
 
-
-def search():
+def search(calculator=None, y_name=None, x_name=None, other_params_name=None, deci_list_len=None):
     if '=' in args.function:
         f = sympy2eqtree(str2sympy(args.function.split('=', 1)[1]))
         # Collect operators / leaves (Numbers are unhashable so we deduplicate manually)
@@ -282,16 +318,13 @@ def search():
     )
     
     if args.use_custom_ops_only:
-        # Use only manually specified operators
-        if custom_binary:
-            binary = custom_binary
-            logger.note(f"Using custom binary operators only: {[op.__name__ for op in binary]}")
-        if custom_unary:
-            unary = custom_unary
-            logger.note(f"Using custom unary operators only: {[op.__name__ for op in unary]}")
-        if custom_leaf:
-            leaf = custom_leaf
-            logger.note(f"Using custom leaf constants only: {[op.to_str(number_format='.2f') for op in leaf]}")
+        # Use only manually specified operators (even if empty)
+        binary = custom_binary
+        logger.note(f"Using custom binary operators only: {[op.__name__ for op in binary]}")
+        unary = custom_unary
+        logger.note(f"Using custom unary operators only: {[op.__name__ for op in unary]}")
+        leaf = custom_leaf
+        logger.note(f"Using custom leaf constants only: {[op.to_str(number_format='.2f') for op in leaf]}")
     else:
         # Merge custom operators with existing ones
         if custom_binary:
@@ -329,8 +362,42 @@ def search():
     logger.note('\n'.join(f'{k}: {v if not isinstance(v, list) else "[" + ", ".join(v) + "]"}' for k, v in log.items()))
 
     tokenizer = Tokenizer(-100, 100, 4, args.max_var)
-    state_dict = torch.load(args.load_model)
-    model_args = AttrDict(dropout=0.1, d_model=512, d_input=64, d_output=512, n_TE_layers=8, max_len=50, max_param=5, max_var=args.max_var, uniform_sample_number=args.sample_num,device=args.device, use_SENet=True, use_old_model=args.use_old_model)
+    # Safely load checkpoint: if CUDA is not available, force mapping to CPU.
+    model_path = os.path.join(os.path.dirname(__file__), args.load_model)
+    try:
+        if torch.cuda.is_available():
+            map_location = args.device if hasattr(args, 'device') else None
+        else:
+            map_location = torch.device('cpu')
+    except Exception:
+        # Fallback: map to CPU if anything unexpected happens
+        map_location = torch.device('cpu')
+    # torch.load accepts either a device string/torch.device or None
+    state_dict = torch.load(model_path, map_location=map_location)
+    # Ensure model device is valid for this runtime: if CUDA is not available, force CPU
+    try:
+        if torch.cuda.is_available():
+            safe_device = args.device
+        else:
+            logger.note('CUDA not available: forcing model device to CPU')
+            safe_device = torch.device('cpu')
+    except Exception:
+        safe_device = torch.device('cpu')
+
+    model_args = AttrDict(
+        dropout=0.1,
+        d_model=512,
+        d_input=64,
+        d_output=512,
+        n_TE_layers=8,
+        max_len=50,
+        max_param=5,
+        max_var=args.max_var,
+        uniform_sample_number=args.sample_num,
+        device=safe_device,
+        use_SENet=True,
+        use_old_model=args.use_old_model,
+    )
     model = MDLformer(model_args, state_dict['xy_token_list'])
     model.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)
     model.eval()
@@ -338,8 +405,8 @@ def search():
         tokenizer=tokenizer,
         model=model,
         n_iter=args.n_iter,
-    c=args.c,
-    sample_num=args.sample_num,
+        c=args.c,
+        sample_num=args.sample_num,
         keep_vars=args.keep_vars,
         normalize_y=args.normalize_y,
         normalize_all=args.normalize_all,
@@ -357,6 +424,12 @@ def search():
         max_power_abs=args.max_power_abs,
         complexity_limit=args.complexity_limit,
         complexity_alpha=args.complexity_alpha,
+        max_nesting_depth=args.get('max_nesting_depth'),
+        calculator=calculator,
+        y_name=y_name,
+        x_name=x_name,
+        other_params_name=other_params_name,
+        deci_list_len=deci_list_len,
     )
 
     # Inject extra leaf constants AFTER estimator build (no harm if duplicates) but before fit
@@ -408,7 +481,7 @@ def search():
         'date': time.strftime('%Y-%m-%d %H:%M:%S'),
         'host': gethostname(),
         'name': args.name,
-        'load_model': args.load_model,
+        'load_model': os.path.join(os.path.dirname(__file__), args.load_model),
         'success': str(rmse < 1e-6),
         'n_iter': len(est.records),
         'duration': est.records[-1]['time'],
