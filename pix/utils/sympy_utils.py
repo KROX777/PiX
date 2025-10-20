@@ -26,8 +26,6 @@ def sp_simplify_with_timeout(expr, timeout=3):
         except (NotImplementedError, TimeoutError) as error:
             signal.alarm(0)
             return expr
-        
-        
     return expr
 
 def dot(tensor1, tensor2):

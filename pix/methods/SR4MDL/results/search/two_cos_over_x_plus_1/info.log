@@ -1,0 +1,33 @@
+[two_cos_over_x_plus_1|search|I|Sep24 12:09:47|0:00:00.000198] {
+          function: f=2*cos(x1)/x1+1
+          name: two_cos_over_x_plus_1
+          seed: 4229
+          device: auto
+          sample_num: 200
+          c: 1.41
+          max_len: 30
+          n_iter: 10000
+          max_var: 10
+          load_model: ./results/train/demo/checkpoint.pth
+          quiet: False
+          keep_vars: False
+          normalize_y: False
+          normalize_all: False
+          remove_abnormal: False
+          use_old_model: False
+          cheat: False
+          save_dir: ./results/search/two_cos_over_x_plus_1
+        }
+[two_cos_over_x_plus_1|search|N|Sep24 12:09:48|0:00:00.266974] target function: f=2*cos(x1)/x1+1
+        binary operators: [Add, Mul, Pow]
+        unary operators: [Cos]
+        leaf: [1, 2, -1]
+        variables: [x1]
+[two_cos_over_x_plus_1|mcts|I|Sep24 12:09:54|0:00:06.311021] Iter: 7 | Reward: 0.98440 | Complexity: 11 | R2: 0.99527 | MDL: 25.21642 | Best: [x1 ** -1, x1 * -1 ** x1, x1] (N=0, Q=0.00, MDL=25) | Best equation: 1.048624 + 1.9873 * x1 ** -1 + -0.271468 * x1 | Speed: 787ms/iter (786us/iter) | Time: None | Current: [-1 ** x1, (-1 ** x1) ** -1 ** x1, (-1 ** x1) ** x1] (N=1, Q=0.98, MDL=25)
+[two_cos_over_x_plus_1|mcts|I|Sep24 12:09:54|0:00:07.042918] Iter: 8 | Reward: 0.98440 | Complexity: 11 | R2: 0.99527 | MDL: 25.21642 | Best: [x1 ** -1, x1 * -1 ** x1, x1] (N=0, Q=0.00, MDL=25) | Best equation: 1.048624 + 1.9873 * x1 ** -1 + -0.271468 * x1 | Speed: 780ms/iter (779us/iter) | Time: None | Current: [-1 ** x1, -1 ** x1 + 1, (-1 ** x1) ** x1] (N=1, Q=0.98, MDL=25)
+[two_cos_over_x_plus_1|mcts|I|Sep24 12:09:55|0:00:07.812349] Iter: 9 | Reward: 0.98440 | Complexity: 11 | R2: 0.99527 | MDL: 25.21642 | Best: [x1 ** -1, x1 * -1 ** x1, x1] (N=0, Q=0.00, MDL=25) | Best equation: 1.048624 + 1.9873 * x1 ** -1 + -0.271468 * x1 | Speed: 779ms/iter (778us/iter) | Time: None | Current: [cos(-1 ** x1 + 1), -1 ** x1 + 1, (-1 ** x1) ** x1] (N=1, Q=0.98, MDL=25)
+[two_cos_over_x_plus_1|mcts|I|Sep24 12:09:56|0:00:08.645713] Iter: 10 | Reward: 0.98440 | Complexity: 11 | R2: 0.99527 | MDL: 25.21642 | Best: [x1 ** -1, x1 * -1 ** x1, x1] (N=0, Q=0.00, MDL=25) | Best equation: 1.048624 + 1.9873 * x1 ** -1 + -0.271468 * x1 | Speed: 785ms/iter (783us/iter) | Time: None | Current: [cos(-1 ** x1 + 1), -1 ** x1 + 1, (-1 ** x1) ** x1, 2 ** (-1 ** x1) ** x1] (N=1, Q=0.98, MDL=28)
+[two_cos_over_x_plus_1|mcts|I|Sep24 12:09:57|0:00:09.496041] Iter: 11 | Reward: 0.99004 | Complexity: 10 | R2: 1.00000 | MDL: 30.58352 | Best: [x1 ** -1, -1 ** x1 + 1, (-1 ** x1) ** x1, cos(x1) * x1 ** -1] (N=0, Q=0.00, MDL=31) | Best equation: 1 + 2 * cos(x1) * x1 ** -1 | Speed: 788ms/iter (787us/iter) | Time: None | Current: [x1 ** -1, -1 ** x1 + 1, (-1 ** x1) ** x1, 2 ** (-1 ** x1) ** x1] (N=1, Q=0.99, MDL=31)
+[two_cos_over_x_plus_1|mcts|N|Sep24 12:09:57|0:00:09.496493] Early stopping at iter 11 with R2 1.0 ([x1 ** -1, -1 ** x1 + 1, (-1 ** x1) ** x1, cos(x1) * x1 ** -1])
+[two_cos_over_x_plus_1|search|I|Sep24 12:09:57|0:00:09.496621] Finished
+[two_cos_over_x_plus_1|search|N|Sep24 12:09:57|0:00:09.496890] Result = x1 ** -1 * (x1 + 2 * cos(x1)), RMSE = 0.0000, R2 = 1.0000

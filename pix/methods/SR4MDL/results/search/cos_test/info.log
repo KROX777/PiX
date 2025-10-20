@@ -1,0 +1,20 @@
+[cos_test|search|I|Sep24 12:06:13|0:00:00.000191] {
+          function: f=cos(x1)/x1
+          name: cos_test
+          seed: 11923
+          device: auto
+          sample_num: 200
+          c: 1.41
+          max_len: 30
+          n_iter: 10000
+          max_var: 10
+          load_model: ./results/train/demo/checkpoint.pth
+          quiet: False
+          keep_vars: False
+          normalize_y: False
+          normalize_all: False
+          remove_abnormal: False
+          use_old_model: False
+          cheat: False
+          save_dir: ./results/search/cos_test
+        }

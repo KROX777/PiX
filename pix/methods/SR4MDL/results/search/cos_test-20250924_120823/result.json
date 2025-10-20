@@ -1,0 +1,16 @@
+{
+    "date": "2025-09-24 12:08:27",
+    "host": "os-node-created-8522c",
+    "name": "cos_test-20250924_120823",
+    "load_model": "./results/train/demo/checkpoint.pth",
+    "success": "True",
+    "n_iter": 2,
+    "duration": 0.7419521808624268,
+    "model": "MCTS4MDL",
+    "exp": "f=cos(x1)/x1",
+    "result": "x1 ** -1 * cos(x1)",
+    "rmse": 0.0,
+    "r2": 1.0,
+    "sample_num": 200,
+    "seed": 21312
+}

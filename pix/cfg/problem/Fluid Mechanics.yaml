@@ -54,10 +54,10 @@ hypotheses:
   related_variables: []
   require_sr: false
 - constraints:
-  - '[gy]abs(gy)>1'
+  - '[gy]gy>5'
   definitions:
   - Fx=0
-  - '[gy] Fy=rho*gy'
+  - '[gy] Fy=-rho*gy'
   equation: []
   father_node: 4
   id: 6
@@ -98,7 +98,7 @@ hypotheses:
   require_sr: false
 - constraints: []
   definitions: []
-  equation: []
+  equation: ["rho * V.diff(t) - div(-p * I + tau) - F"]
   father_node: 8
   id: 11
   name: creeping
@@ -303,6 +303,46 @@ symbolic_regression_config:
   - sin(x)/x
   - cos(x)/x
   - log(x)/x
+  
+  # 操作符配置
+  binary_ops: ['Add', 'Mul', 'Pow']
+  unary_ops: ['Sin', 'Cos', 'Log', 'Exp']
+  leaf_ops: [0.01, -1]
+  
+  # 搜索参数
+  sample_num: 512                    # 采样点数量
+  n_iter: 10000                      # 最大迭代次数
+  search_max_iter: 5000              # 搜索最大迭代
+  time_limit: 300.0                  # 时间限制（秒）
+  target_r2: 0.999                   # 目标 R2 值
+  
+  # MCTS 参数
+  child_num: 50                      # MCTS 子节点数
+  n_playout: 100                     # 模拟次数
+  d_playout: 10                      # 模拟深度
+  c: 1.41                            # MCTS c 参数
+  
+  # 奖励和复杂度参数
+  eta: 0.999                         # 复杂度衰减因子
+  complexity_alpha: 1.0              # 复杂度缩放因子
+  complexity_limit: null             # 复杂度硬限制
+  
+  # 模型参数
+  disable_prod_model: false          # 是否禁用乘积模型
+  max_power_abs: 3                   # 幂次绝对值限制 (防止负幂问题)
+  max_len: 30                        # 表达式最大长度
+  
+  # 数据处理参数
+  normalize_y: false                 # 是否归一化 y
+  normalize_all: false               # 是否归一化所有数据
+  remove_abnormal: true              # 是否移除异常值
+  keep_vars: true                    # 是否保留变量
+  
+  # 额外参数
+  extra_leaf: ''                     # 额外叶子常量
+  log_per_sec: 5                     # 日志频率
+  strict_search: false               # 严格搜索模式
+  verbose: true                      # 详细输出
 unknown_variables:
 - mu
 - Fx

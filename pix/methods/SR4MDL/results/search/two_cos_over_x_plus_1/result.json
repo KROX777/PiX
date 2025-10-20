@@ -1,0 +1,16 @@
+{
+    "date": "2025-09-24 12:09:57",
+    "host": "os-node-created-8522c",
+    "name": "two_cos_over_x_plus_1",
+    "load_model": "./results/train/demo/checkpoint.pth",
+    "success": "True",
+    "n_iter": 11,
+    "duration": 7.435957193374634,
+    "model": "MCTS4MDL",
+    "exp": "f=2*cos(x1)/x1+1",
+    "result": "x1 ** -1 * (x1 + 2 * cos(x1))",
+    "rmse": 1.3719019783324266e-16,
+    "r2": 1.0,
+    "sample_num": 200,
+    "seed": 4229
+}

@@ -1,0 +1,3 @@
+success	name	exp	n_iter	duration	seed	rmse	r2	result	target	date	host	load_model	model	sample_num
+True,cos_test-20250924_120823,f=cos(x1)/x1,2,0.7419521808624268,21312,0.0,1.0,x1 ** -1 * cos(x1),,2025-09-24 12:08:27,os-node-created-8522c,./results/train/demo/checkpoint.pth,MCTS4MDL,
+True,two_cos_over_x_plus_1,f=2*cos(x1)/x1+1,11,7.435957193374634,4229,1.3719019783324266e-16,1.0,x1 ** -1 * (x1 + 2 * cos(x1)),,2025-09-24 12:09:57,os-node-created-8522c,./results/train/demo/checkpoint.pth,MCTS4MDL,

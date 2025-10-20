@@ -1,0 +1,15 @@
+{
+    "date": "2025-09-24 11:57:02",
+    "host": "os-node-created-8522c",
+    "name": "gp_test",
+    "success": "True",
+    "n_iter": 1,
+    "duration": 2.076972723007202,
+    "model": "GP",
+    "exp": "f=x1+x2*sin(x3)",
+    "result": "x2 * sin(x3) + x1",
+    "rmse": 0.0,
+    "r2": 1.0,
+    "sample_num": 200,
+    "seed": 20785
+}

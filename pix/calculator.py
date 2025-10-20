@@ -396,10 +396,15 @@ class Calculator:
         
         return res_func_list
     
-    def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train"):
+    def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train", sample_ratio=0.3, seed=42):
         """
         Args:
         deci_list_len: int, length of decision dictionary for regularization.
+        reg_scale: float, regularization scale factor.
+        pool_size: int, pooling size for spatial dimensions.
+        mode: str, "train" or "valid" mode.
+        sample_ratio: float, ratio of spatial points to sample (0 < sample_ratio <= 1).
+        seed: int, random seed for reproducible sampling.
         
         Returns:
         loss_func: function, the loss function to minimize.
@@ -411,16 +416,118 @@ class Calculator:
         reg_list = lambda params: [deci_list_len, len(params), tot_count_ops]
         reg_func = lambda params: reg_coefs.dot(np.array(reg_list(params)))
 
+        # 获取数据并创建采样索引
+        if mode == "train":
+            args_data = self.train_args
+        else:
+            args_data = self.valid_args
+            
+        # 创建可复现的随机采样索引 - 采样多个空间区域和时间步
+        np.random.seed(seed)
+        if len(args_data) > 0:
+            # 根据是否有时间维度确定空间维度的位置
+            if self.has_time:
+                # 形状: (x, y, t, ...) -> 前两个是空间维度，第三个是时间维度
+                spatial_shape = args_data[0].shape[:2]  # (nx, ny)
+                time_steps = args_data[0].shape[2]  # nt
+            else:
+                # 形状: (x, y, ...) -> 前两个是空间维度
+                spatial_shape = args_data[0].shape[:2]  # (nx, ny)
+                time_steps = None
+            
+            # 计算要采样的空间区域数量
+            total_spatial_area = spatial_shape[0] * spatial_shape[1]
+            target_spatial_area = int(total_spatial_area * sample_ratio)
+            
+            # 每个区域的大小（保证能进行pooling）
+            region_height = max(pool_size * 2, spatial_shape[0] // 4)  # 至少是pooling size的2倍
+            region_width = max(pool_size * 2, spatial_shape[1] // 4)
+            region_area = region_height * region_width
+            
+            # 计算需要采样的区域数量
+            n_regions = max(1, target_spatial_area // region_area)
+            n_regions = min(n_regions, (spatial_shape[0] // region_height) * (spatial_shape[1] // region_width))
+            
+            # 生成随机的空间区域位置
+            spatial_regions = []
+            for _ in range(n_regions):
+                start_x = np.random.randint(0, max(1, spatial_shape[0] - region_height + 1))
+                start_y = np.random.randint(0, max(1, spatial_shape[1] - region_width + 1))
+                spatial_regions.append((slice(start_x, start_x + region_height), 
+                                      slice(start_y, start_y + region_width)))
+            
+            # 时间步采样（如果有时间维度）
+            if self.has_time and time_steps > 1:
+                # 采样部分时间步
+                n_time_samples = max(1, int(time_steps * sample_ratio))
+                time_indices = np.random.choice(time_steps, size=n_time_samples, replace=False)
+                time_indices = np.sort(time_indices)  # 保持时间顺序
+            else:
+                time_indices = None
+        
+        def sample_args(args):
+            """对args进行多区域和时间步采样"""
+            if len(args) == 0:
+                return args
+            sampled_args = []
+            
+            for arg in args:
+                # 从所有空间区域中采样数据
+                region_samples = []
+                for region_slice in spatial_regions:
+                    if self.has_time:
+                        # 形状: (x, y, t, ...) -> 先采样空间区域，再采样时间步
+                        if time_indices is not None:
+                            # 采样空间区域和时间步
+                            region_data = arg[region_slice]  # (region_h, region_w, t, ...)
+                            region_data = region_data[:, :, time_indices]  # (region_h, region_w, n_time_samples, ...)
+                        else:
+                            # 只采样空间区域
+                            region_data = arg[region_slice]  # (region_h, region_w, t, ...)
+                    else:
+                        # 形状: (x, y, ...) -> 只采样空间区域
+                        region_data = arg[region_slice]  # (region_h, region_w, ...)
+                    
+                    region_samples.append(region_data)
+                
+                # 将多个区域的数据合并（沿着第一个维度拼接）
+                if len(region_samples) > 1:
+                    sampled_arg = np.concatenate(region_samples, axis=0)
+                else:
+                    sampled_arg = region_samples[0]
+                
+                sampled_args.append(sampled_arg)
+            
+            return sampled_args
+
         res_func_list = self.gen_np_func(self.sp_equation, verbose=False)
-        mse_list = lambda args, params: [(pooling(res(args, params), (pool_size, pool_size))**2).mean()  for res in res_func_list]
+        
+        def mse_list_sampled(args, params):
+            # 先采样，再计算residual，最后pooling
+            sampled_args = sample_args(args)
+            residuals = []
+            for res in res_func_list:
+                res_values = res(sampled_args, params)
+                
+                # 对采样区域进行pooling，保持pool_size不变
+                if len(sampled_args) > 0:
+                    # res_values的形状已经是连续区域: (sample_height, sample_width, t, ...) 或 (sample_height, sample_width, ...)
+                    # 直接对前两个空间维度应用固定的pool_size
+                    pooled_res = pooling(res_values, (pool_size, pool_size))
+                else:
+                    pooled_res = res_values
+                
+                residuals.append((pooled_res**2).mean())
+            return residuals
+        
         # pooling is applied to the first two axises of res, i.e. x and y axis
-        mse_func = lambda args, params: sum(mse_list(args,params))
+        mse_func = lambda args, params: sum(mse_list_sampled(args, params))
         
         if mode == "train":
             loss_func = lambda params: mse_func(self.train_args, params) + reg_func(params)
-            loss_func_list = lambda params: mse_list(self.train_args, params)
+            loss_func_list = lambda params: mse_list_sampled(self.train_args, params)
         else:
             loss_func = lambda params: mse_func(self.valid_args, params) + reg_func(params)
-            loss_func_list = lambda params: mse_list(self.valid_args, params)
+            loss_func_list = lambda params: mse_list_sampled(self.valid_args, params)
             
         return loss_func, loss_func_list

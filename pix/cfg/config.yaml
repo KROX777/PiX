@@ -9,7 +9,7 @@ hydra:
     chdir: True
 
 method: mcts  # 可选: bfsearch, mcts
-dataset_path: pix/data/2d_comp_viscose_newton_ns.npz
+dataset_path: pix/data/Untitled_ggg_0_n_1.8_mu0_3.16227766016838_v_up_0.1_v_bottom_0.5_2d_grid.npz
 verbose: True
 n_jobs: 10
 

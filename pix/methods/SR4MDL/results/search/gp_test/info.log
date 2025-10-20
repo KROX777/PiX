@@ -1,0 +1,18 @@
+[gp_test|search|I|Sep24 11:57:00|0:00:00.000180] {
+          function: f=x1+x2*sin(x3)
+          name: gp_test
+          seed: 20785
+          sample_num: 200
+          n_iter: 10000
+          max_var: 10
+          cheat: False
+          save_dir: ./results/search/gp_test
+        }
+[gp_test|search|N|Sep24 11:57:00|0:00:00.018466] target function: f=x1+x2*sin(x3)
+        binary operators: [Mul, Add]
+        unary operators: [Sin]
+        leaf: []
+        variables: [x3, x1, x2]
+[gp_test|gp|I|Sep24 11:57:02|0:00:02.096013] Early stopping at iter 1 with accuracy 0.0 (Individual(x2 * sin(x3) + x1))
+[gp_test|search|I|Sep24 11:57:02|0:00:02.096305] Finished
+[gp_test|search|N|Sep24 11:57:02|0:00:02.096511] Result = x2 * sin(x3) + x1, RMSE = 0.0000, R2 = 1.0000

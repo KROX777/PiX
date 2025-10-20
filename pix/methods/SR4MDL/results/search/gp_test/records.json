@@ -1,0 +1,1 @@
+{"iter": 1, "time": 2.076972723007202, "fitness": 0.994014980014994, "complexity": 6, "mse": 0.0, "r2": 1.0, "eqtree": "Individual(x2 * sin(x3) + x1)", "population_size": 1000}

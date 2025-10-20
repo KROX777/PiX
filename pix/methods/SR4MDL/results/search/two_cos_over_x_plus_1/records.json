@@ -1,0 +1,11 @@
+{"iter": 1, "time": 0.0009429454803466797, "complexity": 11, "reward": 0.9843964169960403, "r2": 0.9952677414778555, "MDL": 25.2164249420166, "eqtree": "[x1 ** -1, x1 * -1 ** x1, x1] (N=0, Q=0.00, MDL=25)"}
+{"iter": 2, "time": 0.7249486446380615}
+{"iter": 3, "time": 1.3633618354797363}
+{"iter": 4, "time": 2.025209903717041}
+{"iter": 5, "time": 2.753236770629883}
+{"iter": 6, "time": 3.500448703765869}
+{"iter": 7, "time": 4.331845760345459, "speed": ["787ms/iter", "786us/iter"], "detailed_time": "None"}
+{"iter": 8, "time": 5.1013500690460205, "speed": ["780ms/iter", "779us/iter"], "detailed_time": "None"}
+{"iter": 9, "time": 5.833297491073608, "speed": ["779ms/iter", "778us/iter"], "detailed_time": "None"}
+{"iter": 10, "time": 6.602657079696655, "speed": ["785ms/iter", "783us/iter"], "detailed_time": "None"}
+{"iter": 11, "time": 7.435957193374634, "complexity": 10, "reward": 0.9900448802097482, "r2": 1.0, "MDL": 30.583515167236328, "eqtree": "[x1 ** -1, -1 ** x1 + 1, (-1 ** x1) ** x1, cos(x1) * x1 ** -1] (N=0, Q=0.00, MDL=31)", "speed": ["788ms/iter", "787us/iter"], "detailed_time": "None"}

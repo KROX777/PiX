@@ -1,0 +1,29 @@
+[cos_test-20250924_120823|search|I|Sep24 12:08:23|0:00:00.000207] {
+          function: f=cos(x1)/x1
+          name: cos_test-20250924_120823
+          seed: 21312
+          device: auto
+          sample_num: 200
+          c: 1.41
+          max_len: 30
+          n_iter: 10000
+          max_var: 10
+          load_model: ./results/train/demo/checkpoint.pth
+          quiet: False
+          keep_vars: False
+          normalize_y: False
+          normalize_all: False
+          remove_abnormal: False
+          use_old_model: False
+          cheat: False
+          save_dir: ./results/search/cos_test-20250924_120823
+        }
+[cos_test-20250924_120823|search|N|Sep24 12:08:24|0:00:00.256845] target function: f=cos(x1)/x1
+        binary operators: [Mul, Pow]
+        unary operators: [Cos]
+        leaf: [-1]
+        variables: [x1]
+[cos_test-20250924_120823|mcts|I|Sep24 12:08:27|0:00:03.579468] Iter: 2 | Reward: 0.99203 | Complexity: 8 | R2: 1.00000 | MDL: 27.25241 | Best: [x1, cos(x1), x1 ** -1 ** -1 * cos(x1)] (N=0, Q=0.00, MDL=27) | Best equation: x1 ** -1 ** -1 * cos(x1) | Speed: 910ms/iter (908us/iter) | Time: None | Current: [x1 ** x1, x1] (N=1, Q=0.99, MDL=27)
+[cos_test-20250924_120823|mcts|N|Sep24 12:08:27|0:00:03.579833] Early stopping at iter 2 with R2 1.0 ([x1, cos(x1), x1 ** -1 ** -1 * cos(x1)])
+[cos_test-20250924_120823|search|I|Sep24 12:08:27|0:00:03.579918] Finished
+[cos_test-20250924_120823|search|N|Sep24 12:08:27|0:00:03.580130] Result = x1 ** -1 * cos(x1), RMSE = 0.0000, R2 = 1.0000
