@@ -166,8 +166,55 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     
     return binary_ops, unary_ops, leaf_ops
 
-def search(calculator=None, y_name=None, x_name=None, other_params_name=None, deci_list_len=None):
-    if '=' in args.function:
+def search(calculator=None, y_name=None, x_name=None, other_params_name=None, deci_list_len=None,
+           X_override=None, y_override=None):
+    # 1) Dataset override mode: if X_override and y_override are provided, use them directly.
+    if X_override is not None and y_override is not None:
+        # Accept dict-like X or numpy array; y as 1D array-like
+        if isinstance(X_override, dict):
+            X = {k: np.asarray(v) for k, v in X_override.items()}
+            # Ensure all columns share the same length
+            lengths = {k: len(v) for k, v in X.items()}
+            if len(set(lengths.values())) != 1:
+                raise ValueError(f"Inconsistent feature lengths: {lengths}")
+            N = next(iter(lengths.values()))
+        else:
+            X_arr = np.asarray(X_override)
+            if X_arr.ndim != 2:
+                raise ValueError("X_override must be dict or 2D array [N, D]")
+            N, D = X_arr.shape
+            # auto-name variables x0,x1,...
+            X = {f"x{i}": X_arr[:, i] for i in range(D)}
+        y = np.asarray(y_override).reshape(-1)
+        if y.shape[0] != N:
+            raise ValueError(f"y_override length {y.shape[0]} != N {N}")
+
+        # default operators if none deduced from args.function path; keep prior defaults
+        binary = [nd2.Mul, nd2.Div, nd2.Add, nd2.Sub]
+        unary = [nd2.Sqrt, nd2.Cos, nd2.Sin, nd2.Pow2, nd2.Pow3, nd2.Exp, nd2.Inv, nd2.Neg, nd2.Arcsin, nd2.Arccos, nd2.Cot, nd2.Log, nd2.Tanh]
+        leaf = [nd2.Number(1), nd2.Number(2), nd2.Number(np.pi)]
+
+        # respect sample_num as cap
+        if N > args.sample_num:
+            idx = np.random.choice(N, args.sample_num, replace=False)
+            for k in X:
+                X[k] = X[k][idx]
+            y = y[idx]
+            N = args.sample_num
+        else:
+            args.sample_num = N
+
+        log = {
+            'target function': 'dataset-override',
+            'binary operators': [op.__name__ for op in binary],
+            'unary operators': [op.__name__ for op in unary],
+            'leaf': [op.to_str(number_format=".2f") for op in leaf],
+            'variables': list(X.keys()),
+            'domain': {},
+            'N': int(N),
+        }
+
+    elif '=' in args.function:
         f = sympy2eqtree(str2sympy(args.function.split('=', 1)[1]))
         # Collect operators / leaves (Numbers are unhashable so we deduplicate manually)
         binary = []

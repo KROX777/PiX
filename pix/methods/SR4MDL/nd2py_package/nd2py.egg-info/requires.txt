@@ -1,0 +1,15 @@
+tqdm>=4.66
+pytest>=8.3
+numpy>=1.20
+scipy>=1.14
+torch>=1.12
+pandas>=2.2
+scikit-learn>=1.5
+setproctitle
+matplotlib
+seaborn
+pyyaml
+rich
+dotenv
+requests
+pyperclip

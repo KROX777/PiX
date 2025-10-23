@@ -219,12 +219,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             self.logger.warning('Unknown args: %s', ', '.join(f'{k}={v}' for k,v in kwargs.items()))
 
     def _compute_expression_hash(self, node: Node) -> str:
-        """
-        计算表达式的hash值，用于缓存优化结果
-        """
         import hashlib
-        
-        # 将表达式列表转换为字符串表示
         expr_strs = []
         for eq in node.eqtrees:
             if hasattr(eq, "to_str"):
@@ -232,14 +227,8 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             else:
                 expr_str = str(eq)
             expr_strs.append(expr_str)
-        
-        # 排序以确保相同表达式集合的hash一致
         expr_strs.sort()
-        
-        # 组合所有表达式字符串
         combined_str = "|".join(expr_strs)
-        
-        # 计算hash
         return hashlib.md5(combined_str.encode()).hexdigest()
 
     def get_cache_stats(self) -> dict:
@@ -572,7 +561,6 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             # 检查缓存，避免重复优化相同的表达式
             expr_hash = self._compute_expression_hash(node)
             if expr_hash in self.optimization_cache:
-                # 使用缓存的结果
                 cached_result = self.optimization_cache[expr_hash]
                 sol = cached_result['sol']
                 node.r2 = cached_result['r2']
