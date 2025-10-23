@@ -48,11 +48,11 @@ avoid_zero_eps: 0.05
 sample_num: 512
 
 # MCTS / search hyperparameters
-n_iter: 500
+n_iter: 150
 c: 1.0
 child_num: 50
-n_playout: 10
-d_playout: 5
+n_playout: 20
+d_playout: 10
 eta: 0.999
 complexity_alpha: 1.0
 complexity_limit: null
@@ -67,12 +67,12 @@ cheat: false
 # Estimator / fitting options
 disable_prod_model: true
 max_power_abs: null
-max_nesting_depth: 3
+max_nesting_depth: 4
 extra_leaf: ''
 
 # Custom operators (comma-separated strings); use 'pi' or 'e' in leaf list if desired
 custom_binary_ops: 'Add,Mul,Div'
-custom_unary_ops: 'Cos,Log,Sin'
+custom_unary_ops: 'Cos,Log,Sin,Exp,Sqrt'
 custom_leaf_ops: ''
 use_custom_ops_only: true
 

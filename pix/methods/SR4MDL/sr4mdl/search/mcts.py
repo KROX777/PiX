@@ -6,7 +6,6 @@ import logging
 import sklearn
 import traceback
 import numpy as np
-import sympy as sp
 import nd2py as nd
 import pandas as pd
 from tqdm import tqdm
@@ -31,29 +30,13 @@ from nd2py.utils import seed_all, Timer, NamedTimer, R2_score, RMSE_score
 from pix.utils.scipy_utils import optimize_with_timeout
 
 def calculate_nesting_depth(expr):
-    """
-    计算nd2py表达式的嵌套深度
-    
-    Args:
-        expr: nd2py Symbol表达式
-        
-    Returns:
-        int: 嵌套深度，例如log(cos(log(x)))返回3
-    """
     if expr is None:
         return 0
-    
-    # 如果是叶子节点（变量或常数）
     if isinstance(expr, (nd.Variable, nd.Number)):
         return 1
-    
-    # 如果有操作数
     if hasattr(expr, 'operands') and expr.operands:
-        # 递归计算所有操作数的深度，取最大值并加1
         max_depth = max(calculate_nesting_depth(operand) for operand in expr.operands)
         return max_depth + 1
-    
-    # 其他情况（比如没有操作数的特殊节点）
     return 1
 
 class Node:
@@ -159,6 +142,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                  y_name=None,
                  other_params_name=None,
                  deci_list_len=None,
+                 mode='inverse',
                  **kwargs):
         self.tokenizer = tokenizer # Tokenizer(-100, 100, 4)
         self.model = model # DataEncoder(AttrDict({}), self.tokenizer.get_token_list(all=False))
@@ -210,11 +194,12 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.x_name = x_name
         self.other_params_name = other_params_name
         self.deci_list_len = deci_list_len
+        self.mode = mode
         
-        # 添加优化结果的缓存机制
         self.optimization_cache = {}
+        self._global_top = {}
+        self.physics_eval_cache = {}
         
-    # always simplify best expression (original behavior)
         if kwargs:
             self.logger.warning('Unknown args: %s', ', '.join(f'{k}={v}' for k,v in kwargs.items()))
 
@@ -227,32 +212,45 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             else:
                 expr_str = str(eq)
             expr_strs.append(expr_str)
+        
         expr_strs.sort()
         combined_str = "|".join(expr_strs)
+
         return hashlib.md5(combined_str.encode()).hexdigest()
 
+    # ---------- Global Top Helpers ----------
+    def _register_global_candidate(self, node: 'Node'):
+        try:
+            if node is None or node.reward is None or not np.isfinite(node.reward):
+                return
+            h = self._compute_expression_hash(node)
+            if h not in self._global_top or (self._global_top[h].reward or -np.inf) < node.reward:
+                self._global_top[h] = node.copy()
+        except Exception:
+            pass
+
+    def _get_global_top_k_nodes(self, k:int=10):
+        nodes = list(self._global_top.values())
+        if not nodes:
+            return []
+        nodes.sort(key=lambda n: n.reward if n.reward is not None else -np.inf, reverse=True)
+        return nodes[:k]
+
     def get_cache_stats(self) -> dict:
-        """
-        获取缓存统计信息
-        """
         return {
             'cache_size': len(self.optimization_cache),
             'cached_expressions': list(self.optimization_cache.keys())
         }
     
     def clear_cache(self):
-        """
-        清空缓存
-        """
         self.optimization_cache.clear()
-        print("优化结果缓存已清空")
 
     def __repr__(self):
         res = 'None' if self.eqtree is None else self.eqtree.to_str()
         return '{}({})'.format(self.__class__.__name__, res)
 
     def fit(self, X:np.ndarray|pd.DataFrame|Dict[str,np.ndarray], y, n_iter=None, use_tqdm=False, 
-            early_stop:callable=lambda r2, complexity, eq: r2 > 0.99999):
+            early_stop:callable=lambda r2, complexity, eq: r2 > 0.99999, is_final_optim=True):
         """
         Args:
             X: (n_samples, n_dims)
@@ -261,10 +259,6 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         seed_all(self.random_state)
         n_iter = n_iter or self.n_iter
         
-        # 打印缓存统计信息
-        # cache_stats = self.get_cache_stats()
-        # print(f"[缓存统计] 开始训练，当前缓存中有 {cache_stats['cache_size']} 个已优化的表达式")
-
         # Preprocess
         X = preprocess(X)
         X, y = sample_Xy(X, y, self.sample_num)
@@ -297,6 +291,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 self.set_reward(self.best, X, y)
                 # original behavior: always simplify
                 self.eqtree = simplify(self.best.phi)
+                self._register_global_candidate(self.best)
                 record['complexity'] = self.best.complexity
                 record['reward'] = self.best.reward
                 record['r2'] = self.best.r2
@@ -317,7 +312,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 log['MDL'] = f'{self.best.MDL:.5f}'
                 log['Best'] = str(self.best)
                 log['Best equation'] = str(self.best.phi)
-                log['Speed'] = f'{record['speed'][0]} ({record['speed'][1]})'
+                log['Speed'] = f"{record['speed'][0]} ({record['speed'][1]})"
                 log['Time'] = record['detailed_time']
                 log['Current'] = str(expand)
                 self.logger.info(' | '.join(f'\033[4m{k}\033[0m: {v}' for k, v in log.items()))
@@ -331,11 +326,41 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 self.logger.note(f'Early stopping at iter {iter} with R2 {self.best.r2} ({self.best.eqtrees})')
                 break
         
-        # 打印最终缓存统计信息
-        final_cache_stats = self.get_cache_stats()
-        print(f"[缓存统计] 训练结束，缓存中共有 {final_cache_stats['cache_size']} 个已优化的表达式")
-        
-        # self.logger.info(expand.to_route(3, self.c))
+        # Final Optim
+        if self.calculator is not None and is_final_optim:
+            top_nodes = self._get_global_top_k_nodes(k=10)
+            mse_list = []
+            for node_opt in top_nodes:
+                Z = np.zeros((y.shape[0], 1+len(node_opt.eqtrees)))
+                Z[:, 0] = 1.0
+                for idx_t, eqtree in enumerate(node_opt.eqtrees, 1):
+                    try:
+                        Z[:, idx_t] = eqtree.eval(X)
+                    except Exception:
+                        Z[:, idx_t] = np.nan
+                Z[~np.isfinite(Z)] = 0
+                A_ls, _, _, _ = np.linalg.lstsq(Z, y, rcond=None)
+                import copy
+                og_calc = copy.deepcopy(self.calculator)
+                sol = self.optimization(node_opt, init_params=np.array(A_ls))
+                h = self._compute_expression_hash(node_opt)
+                self.optimization_cache[h] = {
+                    'sol': sol,
+                    'r2': 1 / (1 + sol['fun']),
+                    'mse': node_opt.mse,
+                    'A': np.array(sol['x'])
+                }
+                print(sol['x'], node_opt.mse)
+                mse_list.append(node_opt.mse)
+                self.calculator = copy.deepcopy(og_calc)
+
+            best_mse = float(np.nanmin(mse_list))
+            self.logger.info(
+                f"[final-opt] global top-10 optimized MSEs (min={best_mse:.3e}): "
+                + ', '.join(f"{m:.3e}" for m in mse_list)
+            )
+            
+            return best_mse
 
     def predict(self, X:np.ndarray|pd.DataFrame|Dict[str,np.ndarray]) -> np.ndarray:
         """
@@ -507,6 +532,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
 
     def simulate(self, node:Node, X:Dict[str,np.ndarray], y:np.ndarray) -> Tuple[Node, float]:
         self.set_reward(node, X, y)
+        self._register_global_candidate(node)
         best = node
         for i in range(self.n_playout):
             state = node
@@ -515,6 +541,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 if action is None: break
                 state = self.action(state, action)
                 self.set_reward(state, X, y)
+                self._register_global_candidate(state)
                 if state.reward > best.reward: best = state
         return best.reward, best
 
@@ -523,6 +550,67 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             node.N += 1
             node.Q += reward
             node = node.parent
+            
+    def optimization(self, node:Node, init_params:np.ndarray|None=None):
+        # Convert an nd2py expression tree to a readable string.
+        # Prefer the built-in to_str; fallback to a minimal recursive mapping.
+        def transfer_nd_expr_to_str(expr, number_format: str = ".6g") -> str:
+            if expr is None:
+                return "0"
+            if hasattr(expr, "to_str"):
+                return expr.to_str(number_format=number_format)
+            if isinstance(expr, nd.Number):
+                return str(expr.value)
+            if isinstance(expr, nd.Variable):
+                return expr.name
+            raise ValueError(f'Cannot convert {expr} to str')
+
+        # 1) Build a linear template: y ≈ b0 + Σ bi * fi(x)
+        fi_strs = [transfer_nd_expr_to_str(eq) for eq in node.eqtrees]
+
+        # If self.x_name is provided (a list), remap variable names inside fi_strs
+        # to the calculator's expected variable names. Map by order of self.variables.
+        if self.x_name is not None and isinstance(self.x_name, (list, tuple)):
+            src_names = [v.name for v in self.variables]
+            # build mapping: src -> dst (only for indices available)
+            name_map = {}
+            for i, dst in enumerate(self.x_name):
+                if i < len(src_names):
+                    name_map[src_names[i]] = dst
+            if name_map:
+                # perform whole-word replacements
+                def replace_vars(s: str) -> str:
+                    for src, dst in name_map.items():
+                        s = re.sub(rf"\b{re.escape(src)}\b", dst, s)
+                    return s
+                fi_strs = [replace_vars(s) for s in fi_strs]
+        n_coef = 1 + len(fi_strs)
+        coef_names = ["b0"] + [f"b{i}" for i in range(1, n_coef)]
+
+        # 2) Register unknown coefficients to the calculator
+        for name in coef_names:
+            self.calculator.register_unknown_var(name)
+
+        # 3) Compose expression string with those coefficients
+        expr_terms = [coef_names[0]] + [f"{coef_names[i+1]}*({fi})" for i, fi in enumerate(fi_strs)]
+        expr_str = " + ".join(expr_terms) if expr_terms else "0"
+        self.calculator.update_unknown_var(self.y_name, expr_str)
+        self.calculator.upd_local_dict()
+        train_loss_func, mse_list_train = self.calculator.get_loss_func(deci_list_len=self.deci_list_len)
+        unk_list = list(self.calculator.sp_unknown_quantities.keys())
+        n_params = len(unk_list)
+        if init_params is None or len(init_params) != n_params:
+            init_params = np.random.rand(n_params)
+    
+        sol = optimize_with_timeout(
+            train_loss_func,
+            init_params,
+            self.calculator.get_constr_dict_list(),
+            prev_sol_best=None,
+            verbose=True,
+        )
+        node.mse = sol['fun']
+        return sol
 
     def set_reward(self, node:Node, X:Dict[str,np.ndarray], y:np.ndarray) -> float:
         self.view_timer.add(1)
@@ -535,29 +623,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         if isinstance(self.other_params_name, list) and self.y_name in self.other_params_name:
             self.other_params_name.remove(self.y_name)
         # linear model as phi
-        if self.calculator is not None:
-            # self.calculator.register_unknown_var('b0')
-            # self.calculator.register_unknown_var('b1')
-            # self.calculator.register_unknown_var('b2')
-            # self.calculator.register_unknown_var('b3')
-            # self.calculator.register_unknown_var('b4')
-            # self.calculator.update_unknown_var('mu', 'b0 + b1*cos(gamma) + b2*cos(log(gamma)) + b3*log(cos(log(gamma))) + b4*gamma')
-            # self.calculator.upd_local_dict()
-            # train_loss_func, mse_list_train = self.calculator.get_loss_func(deci_list_len=self.deci_list_len)
-            
-            # init_params = np.random.rand(len(self.calculator.sp_unknown_quantities))
-            
-            # params_constr = self.calculator.constraints
-            # for i, constr_list in enumerate(params_constr.values()):
-            #     for c in constr_list:
-            #         if "init" in c:
-            #             init_params[i] += c["init"]
-            
-            # print("Hello")
-            # sol = optimize_with_timeout(train_loss_func, init_params, self.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
-    
-            # print(sol['x'], sol['fun'])
-            # a = input("Press Enter to continue...")
+        if self.mode == 'optimization':
             # 检查缓存，避免重复优化相同的表达式
             expr_hash = self._compute_expression_hash(node)
             if expr_hash in self.optimization_cache:
@@ -570,81 +636,19 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             else:
                 import copy
                 og_calc = copy.deepcopy(self.calculator)
-                if len(self.other_params_name) > 0:
+                if self.other_params_name and len(self.other_params_name) > 0:
                     raise NotImplementedError('other_params is not supported yet')
-                # Convert an nd2py expression tree to a readable string.
-                # Prefer the built-in to_str; fallback to a minimal recursive mapping.
-                def transfer_nd_expr_to_str(expr, number_format: str = ".6g") -> str:
-                    if expr is None:
-                        return "0"
-                    if hasattr(expr, "to_str"):
-                        return expr.to_str(number_format=number_format)
-                    if isinstance(expr, nd.Number):
-                        return str(expr.value)
-                    if isinstance(expr, nd.Variable):
-                        return expr.name
-                    raise ValueError(f'Cannot convert {expr} to str')
-
-                # 1) Build a linear template: y ≈ b0 + Σ bi * fi(x)
-                fi_strs = [transfer_nd_expr_to_str(eq) for eq in node.eqtrees]
-
-                # If self.x_name is provided (a list), remap variable names inside fi_strs
-                # to the calculator's expected variable names. Map by order of self.variables.
-                if self.x_name is not None and isinstance(self.x_name, (list, tuple)):
-                    src_names = [v.name for v in self.variables]
-                    # build mapping: src -> dst (only for indices available)
-                    name_map = {}
-                    for i, dst in enumerate(self.x_name):
-                        if i < len(src_names):
-                            name_map[src_names[i]] = dst
-                    if name_map:
-                        # perform whole-word replacements
-                        def replace_vars(s: str) -> str:
-                            for src, dst in name_map.items():
-                                s = re.sub(rf"\b{re.escape(src)}\b", dst, s)
-                            return s
-                        fi_strs = [replace_vars(s) for s in fi_strs]
-                n_coef = 1 + len(fi_strs)
-                coef_names = ["b0"] + [f"b{i}" for i in range(1, n_coef)]
-
-                # 2) Register unknown coefficients to the calculator
-                for name in coef_names:
-                    self.calculator.register_unknown_var(name)
-
-                # 3) Compose expression string with those coefficients
-                expr_terms = [coef_names[0]] + [f"{coef_names[i+1]}*({fi})" for i, fi in enumerate(fi_strs)]
-                expr_str = " + ".join(expr_terms) if expr_terms else "0"
-                self.calculator.update_unknown_var(self.y_name, expr_str)
-                self.calculator.upd_local_dict()
-                train_loss_func, mse_list_train = self.calculator.get_loss_func(deci_list_len=self.deci_list_len)
-                unk_list = list(self.calculator.sp_unknown_quantities.keys())
-                n_params = len(unk_list)
-                init_params = np.random.rand(n_params)
-            
-            
-                # 执行优化并缓存结果
-                sol = optimize_with_timeout(
-                    train_loss_func,
-                    init_params,
-                    self.calculator.get_constr_dict_list(),
-                    prev_sol_best=None,
-                    verbose=True,
-                )
-                # 计算结果
+                sol = self.optimization(node)
                 node.r2 = 1 / (1 + sol['fun'])    # Not r2, actually MSE loss
-                node.mse = sol['fun']
                 try:
                     print("Total MSE: ", sol['fun'])
                     A = np.array(sol['x'])
-                    
-                    # 缓存结果
                     self.optimization_cache[expr_hash] = {
                         'sol': sol,
                         'r2': node.r2,
                         'mse': node.mse,
                         'A': A
                     }
-                    # print(f"[CACHE STORE] 存储优化结果到缓存，hash: {expr_hash[:8]}...")
                 except:
                     raise ValueError('Optimization failed')
                     

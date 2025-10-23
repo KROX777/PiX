@@ -20,8 +20,20 @@ sys.path.insert(0, project_root)
 ROOT_DIR = os.getcwd()
 sys.path.append(ROOT_DIR)
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Import and initialize logger to match search.py
+try:
+    from nd2py.utils import init_logger
+    import time
+    # Create log directory and file for single_test
+    log_dir = os.path.join('./results/single_test')
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f"{time.strftime('%Y%m%d_%H%M%S')}.log")
+    init_logger('sr4mdl', 'single_test', log_file)
+except ImportError:
+    # Fallback if nd2py not available
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+logger = logging.getLogger('sr4mdl.single_test')
 
 def validate_hypothesis_combination(cfg, hypothesis_ids):
     """

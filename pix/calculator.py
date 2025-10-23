@@ -88,6 +88,19 @@ class Calculator:
         self.tol = tol
         self.dim = self.X_dim + (1 if self.has_time else 0)
         
+        # 计算网格间距（等距网格）
+        self.dx = None
+        self.dy = None
+        self.dz = None
+        for i, var in enumerate(self.spatial_vars):
+            if var == 'x':
+                self.dx = round(self.data_loader.grids[i][1] - self.data_loader.grids[i][0], 6)
+            elif var == 'y':
+                self.dy = round(self.data_loader.grids[i][1] - self.data_loader.grids[i][0], 6)
+            elif var == 'z':
+                self.dz = round(self.data_loader.grids[i][1] - self.data_loader.grids[i][0], 6)
+        self.dt = round(self.data_loader.grids[-1][1] - self.data_loader.grids[-1][0], 6) if self.has_time else None
+        
         # 现在解析导出物理量（所有符号都已经创建）
         self._parse_derived_quantities()
 
@@ -125,6 +138,14 @@ class Calculator:
     
     def get_unknown_var_list(self):
         return list(self.sp_unknown_quantities.keys())
+    
+    def remove_known_var(self, var_name):
+        if var_name in self.sp_derived_quantities:
+            self.sp_derived_quantities.pop(var_name)
+            self.sp_unknown_quantities[var_name] = sp.symbols(var_name)
+            # print(f"Deleted known variable '{var_name}', now registered as unknown.")
+        else:
+            print(f"Variable '{var_name}' not found in derived quantities.")
     
     def update_unknown_var(self, var_name, expr):
         """

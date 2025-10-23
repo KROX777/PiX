@@ -68,7 +68,7 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     
     return binary_ops, unary_ops, leaf_ops
 
-def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, verbose=True, preset=None, allowed_functions=None):
+def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, verbose=True, preset=None, allowed_functions=None, method="directxy"):
     tree = HypothesesTree(cfg, root_dir)
     SR_list = []
     for i in deci_list:
@@ -92,6 +92,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
         print("deci_list", deci_list)
         print("unknown_quantities", tree.calculator.sp_unknown_quantities.keys())
         print("equation", tree.calculator.equation_buffer)
+        print("SR_list ", SR_list)
     
     # --- optimization---
     #initial guess
@@ -107,8 +108,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
     # sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
     # print(sol['x'])
     # a = input('Press Enter to continue...')
-    if verbose:
-        print("SR_list: ", SR_list)
+    
     if len(SR_list) == 0: #ordinary solver
         # Disable aggressive bound-based early stop by default; rely on time limit/practical convergence.
         train_loss_func, mse_list_train = tree.calculator.get_loss_func(deci_list_len=len(deci_list))
@@ -126,12 +126,68 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
         params_name = list(tree.calculator.sp_unknown_quantities.keys())
         tree.calculator.upd_local_dict()
         (y, x_vars) = SR_list[0]
-        from pix.methods.SR4MDL.search import search
-        import copy
-        calculator_copy = copy.deepcopy(tree.calculator)
-        
-        search(calculator_copy, y, x_vars, params_name, len(deci_list))
-        #search()
+        if method == "directxy":
+            from pix.methods.pde_solver import run_solver
+            if y == "mu":
+                u_x = tree.calculator.args_data[1]
+                v_x = tree.calculator.args_data[9]
+                u_y = tree.calculator.args_data[2]
+                v_y = tree.calculator.args_data[10]
+
+                S_xx = u_x
+                S_xy = 0.5 * (u_y + v_x)
+                S_yy = v_y
+                S_ddot_S = S_xx**2 + 2 * S_xy**2 + S_yy**2
+                gamma = np.sqrt(2 * S_ddot_S)
+                gamma_sym = sp.symbols('gamma')
+                gt_expr_str = cfg.problem['gt_expression']
+                gt_expr = sp.sympify(gt_expr_str, locals={'gamma': gamma_sym, 'cos': sp.cos, 'sin': sp.sin, 'tan': sp.tan, 'log': sp.log, 'exp': sp.exp, 'sqrt': sp.sqrt, 'pi': sp.pi, 'e': sp.E})
+                gt_func = sp.lambdify(gamma_sym, gt_expr, 'numpy')
+                gt = gt_func(gamma)
+
+                t_min, t_max = 81, 90
+                
+                # mu_x0 = np.stack([gt[0, :, :], gt[0, :, :]], axis=-1)  # Shape: (ny, nt, 2)
+                # mu_y0 = np.stack([gt[:, 0, :], gt[:, 0, :]], axis=-1)  # Shape: (nx, nt, 2)
+                # mu_xN = np.stack([gt[-1, :, :], gt[-1, :, :]], axis=-1)    # (ny, nt, 2)
+                # mu_yN = np.stack([gt[:, -1, :], gt[:, -1, :]], axis=-1)    # (nx, nt, 2)
+
+                mu = run_solver(tree.calculator.args_data, 
+                                t_min=t_min, 
+                                t_max=t_max, 
+                                dx=tree.calculator.dx, 
+                                dy=tree.calculator.dy, 
+                                dt=tree.calculator.dt,
+                                gt=gt)
+                sl = slice(t_min, t_max + 1)
+                mu_sub = mu[:, :, sl, 0]
+                
+                gamma_flat = gamma[:, :, sl].flatten()
+                mu_flat = mu_sub.flatten()
+                # drop non-finite pairs, then sort by gamma
+                mask = np.isfinite(gamma_flat) & np.isfinite(mu_flat)
+                gamma_flat = gamma_flat[mask]
+                mu_flat = mu_flat[mask]
+                order = np.argsort(gamma_flat)
+                gamma_sorted = gamma_flat[order]
+                mu_sorted = mu_flat[order]
+
+                from pix.methods.SR4MDL.search import search as sr4mdl_search
+                expr, loss = sr4mdl_search(calculator=tree.calculator, y_name='mu', x_name=['gamma'], other_params_name=None,
+                                  deci_list_len=len(deci_list),
+                                  X_override={'gamma': gamma_sorted}, y_override=mu_sorted, mode="inverse")
+                
+                print(expr, loss)
+                
+                expr, loss = sr4mdl_search(calculator=tree.calculator, y_name='mu', x_name=['gamma'], other_params_name=None,
+                                  deci_list_len=len(deci_list),
+                                  X_override={'gamma': gamma_sorted}, y_override=mu_sorted, mode="inverse")
+                            
+            else:
+                raise NotImplementedError(f"SR target '{y}' not supported yet in directxy method.")
+        else:
+            from pix.methods.SR4MDL.search import search as sr4mdl_search
+            sr4mdl_search(tree.calculator, y, x_vars, params_name, len(deci_list))
         return
     
     # ---return infos---

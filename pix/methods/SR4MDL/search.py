@@ -101,7 +101,7 @@ os.makedirs(args.save_dir, exist_ok=True)
 
 init_logger('sr4mdl', args.name, os.path.join(args.save_dir, 'info.log'))
 logger = logging.getLogger('sr4mdl.search')
-logger.info(args)
+# logger.info(args)  # Commented out to avoid verbose config output
 seed_all(args.seed)
 def handler(signum, frame): raise KeyboardInterrupt
 signal.signal(signal.SIGINT, handler)
@@ -111,6 +111,11 @@ setproctitle(f'{args.name}@YuZihan')
 if args.device == 'auto':
     args.device = AutoGPU().choice_gpu(memory_MB=1486, interval=15)
 args.function = args.function.replace(' ', '')
+
+# Cache for model and tokenizer to avoid reloading on multiple calls
+_model_loaded = False
+_cached_tokenizer = None
+_cached_model = None
 
 
 def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_leaf_ops=''):
@@ -167,7 +172,47 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     return binary_ops, unary_ops, leaf_ops
 
 def search(calculator=None, y_name=None, x_name=None, other_params_name=None, deci_list_len=None,
-           X_override=None, y_override=None):
+           X_override=None, y_override=None, mode="inverse"):
+    global _model_loaded, _cached_tokenizer, _cached_model
+    if not _model_loaded:
+        _cached_tokenizer = Tokenizer(-100, 100, 4, args.max_var)
+        model_path = os.path.join(os.path.dirname(__file__), args.load_model)
+        try:
+            if torch.cuda.is_available():
+                map_location = args.device if hasattr(args, 'device') else None
+            else:
+                map_location = torch.device('cpu')
+        except Exception:
+            map_location = torch.device('cpu')
+        state_dict = torch.load(model_path, map_location=map_location)
+        try:
+            if torch.cuda.is_available():
+                safe_device = args.device
+            else:
+                logger.note('CUDA not available: forcing model device to CPU')
+                safe_device = torch.device('cpu')
+        except Exception:
+            safe_device = torch.device('cpu')
+        model_args = AttrDict(
+            dropout=0.1,
+            d_model=512,
+            d_input=64,
+            d_output=512,
+            n_TE_layers=8,
+            max_len=50,
+            max_param=5,
+            max_var=args.max_var,
+            uniform_sample_number=args.sample_num,
+            device=safe_device,
+            use_SENet=True,
+            use_old_model=args.use_old_model,
+        )
+        _cached_model = MDLformer(model_args, state_dict['xy_token_list'])
+        _cached_model.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)
+        _cached_model.eval()
+        _model_loaded = True
+    tokenizer = _cached_tokenizer
+    model = _cached_model
     # 1) Dataset override mode: if X_override and y_override are provided, use them directly.
     if X_override is not None and y_override is not None:
         # Accept dict-like X or numpy array; y as 1D array-like
@@ -365,7 +410,6 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
     )
     
     if args.use_custom_ops_only:
-        # Use only manually specified operators (even if empty)
         binary = custom_binary
         logger.note(f"Using custom binary operators only: {[op.__name__ for op in binary]}")
         unary = custom_unary
@@ -408,46 +452,6 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
     
     logger.note('\n'.join(f'{k}: {v if not isinstance(v, list) else "[" + ", ".join(v) + "]"}' for k, v in log.items()))
 
-    tokenizer = Tokenizer(-100, 100, 4, args.max_var)
-    # Safely load checkpoint: if CUDA is not available, force mapping to CPU.
-    model_path = os.path.join(os.path.dirname(__file__), args.load_model)
-    try:
-        if torch.cuda.is_available():
-            map_location = args.device if hasattr(args, 'device') else None
-        else:
-            map_location = torch.device('cpu')
-    except Exception:
-        # Fallback: map to CPU if anything unexpected happens
-        map_location = torch.device('cpu')
-    # torch.load accepts either a device string/torch.device or None
-    state_dict = torch.load(model_path, map_location=map_location)
-    # Ensure model device is valid for this runtime: if CUDA is not available, force CPU
-    try:
-        if torch.cuda.is_available():
-            safe_device = args.device
-        else:
-            logger.note('CUDA not available: forcing model device to CPU')
-            safe_device = torch.device('cpu')
-    except Exception:
-        safe_device = torch.device('cpu')
-
-    model_args = AttrDict(
-        dropout=0.1,
-        d_model=512,
-        d_input=64,
-        d_output=512,
-        n_TE_layers=8,
-        max_len=50,
-        max_param=5,
-        max_var=args.max_var,
-        uniform_sample_number=args.sample_num,
-        device=safe_device,
-        use_SENet=True,
-        use_old_model=args.use_old_model,
-    )
-    model = MDLformer(model_args, state_dict['xy_token_list'])
-    model.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)
-    model.eval()
     est = MCTS4MDL(
         tokenizer=tokenizer,
         model=model,
@@ -477,6 +481,7 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
         x_name=x_name,
         other_params_name=other_params_name,
         deci_list_len=deci_list_len,
+        mode=mode,
     )
 
     # Inject extra leaf constants AFTER estimator build (no harm if duplicates) but before fit
@@ -497,64 +502,66 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
             logger.warning(f"Failed parsing extra_leaf '{args.extra_leaf}': {e}")
 
     try:
-        est.fit(X, y, use_tqdm=False)
+        loss = est.fit(X, y, use_tqdm=False)
         logger.info('Finished')
     except KeyboardInterrupt:
         logger.note('Interrupted')
     except Exception:
         logger.error(traceback.format_exc())
 
-    y_pred = est.predict(X)
-    rmse = RMSE_score(y, y_pred)
-    r2 = R2_score(y, y_pred)
-    # --- Debug: compare internal search R2 (est.best.r2) with raw eval R2 on same data ---
-    internal_r2 = getattr(est.best, 'r2', None)
-    internal_complexity = getattr(est.best, 'complexity', None)
-    internal_reward = getattr(est.best, 'reward', None)
-    if internal_r2 is not None:
-        # recompute theoretical reward component to see mismatch
-        try:
-            recomputed_reward = (args.eta ** (args.complexity_alpha * internal_complexity)) / (2 - internal_r2)
-        except Exception:
-            recomputed_reward = None
-        logger.note(
-            f'Result = {est.eqtree}, RMSE = {rmse:.4f}, R2 = {r2:.4f} | Internal(best) R2={internal_r2:.5f}, complexity={internal_complexity}, '
-            f'internal_reward={internal_reward:.5f} (recomputed={recomputed_reward})'
-        )
-    else:
-        logger.note(f'Result = {est.eqtree}, RMSE = {rmse:.4f}, R2 = {r2:.4f}')
+    return str(est.eqtree), loss
 
-    result = {
-        'date': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'host': gethostname(),
-        'name': args.name,
-        'load_model': os.path.join(os.path.dirname(__file__), args.load_model),
-        'success': str(rmse < 1e-6),
-        'n_iter': len(est.records),
-        'duration': est.records[-1]['time'],
-        'model': 'MCTS4MDL',
-        'exp': args.function,
-        'result': str(est.eqtree),
-        'rmse': rmse,
-        'r2': r2,
-        'sample_num': args.sample_num,
-        'seed': args.seed,
-    }
-    json.dump(result, open(os.path.join(args.save_dir, 'result.json'), 'w'), indent=4)
+    # y_pred = est.predict(X)
+    # rmse = RMSE_score(y, y_pred)
+    # r2 = R2_score(y, y_pred)
+
+    # --- Debug: compare internal search R2 (est.best.r2) with raw eval R2 on same data ---
+    # internal_r2 = getattr(est.best, 'r2', None)
+    # internal_complexity = getattr(est.best, 'complexity', None)
+    # internal_reward = getattr(est.best, 'reward', None)
+    # if internal_r2 is not None:
+    #     # recompute theoretical reward component to see mismatch
+    #     try:
+    #         recomputed_reward = (args.eta ** (args.complexity_alpha * internal_complexity)) / (2 - internal_r2)
+    #     except Exception:
+    #         recomputed_reward = None
+    #     logger.note(
+    #         f'Result = {est.eqtree}, RMSE = {rmse:.4f}, R2 = {r2:.4f} | Internal(best) R2={internal_r2:.5f}, complexity={internal_complexity}, '
+    #         f'internal_reward={internal_reward:.5f} (recomputed={recomputed_reward})'
+    #     )
+    # else:
+    #     logger.note(f'Result = {est.eqtree}, RMSE = {rmse:.4f}, R2 = {r2:.4f}')
+
+    # result = {
+    #     'date': time.strftime('%Y-%m-%d %H:%M:%S'),
+    #     'host': gethostname(),
+    #     'name': args.name,
+    #     'load_model': os.path.join(os.path.dirname(__file__), args.load_model),
+    #     'success': str(rmse < 1e-6),
+    #     'n_iter': len(est.records),
+    #     'duration': est.records[-1]['time'],
+    #     'model': 'MCTS4MDL',
+    #     'exp': args.function,
+    #     'result': str(est.eqtree),
+    #     'rmse': rmse,
+    #     'r2': r2,
+    #     'sample_num': args.sample_num,
+    #     'seed': args.seed,
+    # }
+    # json.dump(result, open(os.path.join(args.save_dir, 'result.json'), 'w'), indent=4)
 
     # aggregate results to aggregate.csv
-    save_path = './results/aggregate.csv'
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    if not os.path.exists(save_path):
-        with open(save_path, 'w') as f:
-            f.write('\t'.join([
-                'success','name','exp','n_iter','duration','seed','rmse','r2',
-                'result','target','date','host','load_model','model','sample_num'
-            ]) + '\n')
-    with open(save_path, 'a') as f:
-        keys = open(save_path, 'r').readline().split('\t')
-        f.write(','.join(str(result.get(k, '')) for k in keys) + '\n')
-
+    # save_path = './results/aggregate.csv'
+    # os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # if not os.path.exists(save_path):
+    #     with open(save_path, 'w') as f:
+    #         f.write('\t'.join([
+    #             'success','name','exp','n_iter','duration','seed','rmse','r2',
+    #             'result','target','date','host','load_model','model','sample_num'
+    #         ]) + '\n')
+    # with open(save_path, 'a') as f:
+    #     keys = open(save_path, 'r').readline().split('\t')
+    #     f.write(','.join(str(result.get(k, '')) for k in keys) + '\n')
 
 if __name__ == '__main__':
     search()
