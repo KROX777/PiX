@@ -9,21 +9,6 @@ def optimize_with_timeout(mse_func, init_params, constr_dict_list, prev_sol_best
                           time_limit: int = 20,
                           bound_f_coef: float = 500,
                           check_time_nit: int = 9):    
-    """
-    Run SLSQP with a callback that can early stop by time or a heuristic bound.
-
-    Args:
-        mse_func: objective function
-        init_params: initial parameter array
-        constr_dict_list: SLSQP constraints
-        prev_sol_best: dict like {"fun": float, "nit": int} to form a pruning bound; if None, bound check is disabled
-        verbose: scipy minimize disp flag
-        time_limit: seconds until forced stop
-        bound_f_coef: multiplier for pruning bound
-        check_time_nit: start checking bound at this iteration or later
-    Returns:
-        dict with keys: fun, x, nit, status, time, and optionally stop_reason
-    """
     # Track state locally (avoid globals). We keep names for minimal intrusion.
     iteration_count = 0
     params = init_params
@@ -79,5 +64,5 @@ def optimize_with_timeout(mse_func, init_params, constr_dict_list, prev_sol_best
         sol = {"fun":fun_val, "x":params, "nit":iteration_count, "status":"EarlyStop"}
         if stop_reason is not None:
             sol['stop_reason'] = stop_reason
-    sol['time'] = time_module.time() - start_time  
+    sol['time'] = time_module.time() - start_time
     return sol

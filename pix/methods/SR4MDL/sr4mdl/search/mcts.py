@@ -13,6 +13,7 @@ from typing import List, Generator, Tuple, Dict
 import re
 import sys
 import os
+import copy
 
 # Add the root directory to sys.path to make pix module importable
 _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -143,6 +144,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                  other_params_name=None,
                  deci_list_len=None,
                  mode='inverse',
+                 log_every_n_iters:int|None=None,
                  **kwargs):
         self.tokenizer = tokenizer # Tokenizer(-100, 100, 4)
         self.model = model # DataEncoder(AttrDict({}), self.tokenizer.get_token_list(all=False))
@@ -195,6 +197,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.other_params_name = other_params_name
         self.deci_list_len = deci_list_len
         self.mode = mode
+        self.log_every_n_iters = log_every_n_iters
         
         self.optimization_cache = {}
         self._global_top = {}
@@ -250,7 +253,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         return '{}({})'.format(self.__class__.__name__, res)
 
     def fit(self, X:np.ndarray|pd.DataFrame|Dict[str,np.ndarray], y, n_iter=None, use_tqdm=False, 
-            early_stop:callable=lambda r2, complexity, eq: r2 > 0.99999, is_final_optim=True):
+            early_stop:callable=lambda r2, complexity, eq: r2 > 0.99999, is_final_optim=True, max_iter=2):
         """
         Args:
             X: (n_samples, n_dims)
@@ -300,7 +303,15 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 record['eqtree'] = str(self.best)
                 stop = early_stop(self.best.r2, self.best.complexity, self.best.phi)
 
-            if (not iter % self.log_per_iter) or (self.step_timer.time > self.log_per_sec) or (iter == n_iter) or (stop):
+            # Decide whether to log this iteration. Important: make time-based logging periodic
+            # by resetting the step timer after a time-triggered log, otherwise it would fire on every
+            # subsequent iteration once the threshold is exceeded.
+            log_by_iter = bool(self.log_every_n_iters and (iter % self.log_every_n_iters == 0))
+            # Keep backward-compatibility with the old "not iter % ..." behavior; treat as modulo trigger
+            log_by_mod = bool(self.log_per_iter and ((iter % self.log_per_iter) == 0))
+            log_by_time = bool(self.step_timer.time > self.log_per_sec)
+            do_log = log_by_iter or log_by_mod or log_by_time or (iter == n_iter) or stop
+            if do_log:
                 record['speed'] = (str(self.step_timer), str(self.view_timer))
                 record['detailed_time'] = str(self.named_timer)
                 
@@ -316,6 +327,9 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 log['Time'] = record['detailed_time']
                 log['Current'] = str(expand)
                 self.logger.info(' | '.join(f'\033[4m{k}\033[0m: {v}' for k, v in log.items()))
+                # Reset the step timer if we logged due to time threshold to enforce periodic time-based logs
+                if log_by_time:
+                    self.step_timer.clear(reset=True)
 
             self.records.append(record)
             if self.save_path:
@@ -328,7 +342,7 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         
         # Final Optim
         if self.calculator is not None and is_final_optim:
-            top_nodes = self._get_global_top_k_nodes(k=10)
+            top_nodes = self._get_global_top_k_nodes(k=5)
             mse_list = []
             for node_opt in top_nodes:
                 Z = np.zeros((y.shape[0], 1+len(node_opt.eqtrees)))
@@ -340,20 +354,34 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                         Z[:, idx_t] = np.nan
                 Z[~np.isfinite(Z)] = 0
                 A_ls, _, _, _ = np.linalg.lstsq(Z, y, rcond=None)
-                import copy
-                og_calc = copy.deepcopy(self.calculator)
-                sol = self.optimization(node_opt, init_params=np.array(A_ls))
-                h = self._compute_expression_hash(node_opt)
-                self.optimization_cache[h] = {
-                    'sol': sol,
-                    'r2': 1 / (1 + sol['fun']),
-                    'mse': node_opt.mse,
-                    'A': np.array(sol['x'])
-                }
-                print(sol['x'], node_opt.mse)
-                mse_list.append(node_opt.mse)
-                self.calculator = copy.deepcopy(og_calc)
-
+                init_params = np.array(A_ls)
+                for i in range(max_iter):
+                    og_calc = copy.deepcopy(self.calculator)
+                    sol = self.optimization(node_opt, init_params=init_params)
+                    self.calculator = copy.deepcopy(og_calc)
+                    new_eqtrees = []
+                    new_params = [sol['x'][0]]
+                    cnt = 0
+                    for j in range(1, len(sol['x'])):
+                        if abs(sol['x'][j]) >= 1e-5:
+                            new_eqtrees.append(node_opt.eqtrees[j-1])
+                            new_params.append(sol['x'][j])
+                            cnt += 1
+                    if cnt == len(sol['x']):
+                        i = max_iter - 1  # early stop
+                    node_opt.eqtrees = new_eqtrees
+                    init_params = np.array(new_params)
+                    if i == max_iter - 1:
+                        h = self._compute_expression_hash(node_opt)
+                        self.optimization_cache[h] = {
+                            'sol': sol,
+                            'r2': 1 / (1 + sol['fun']),
+                            'mse': node_opt.mse,
+                            'A': init_params
+                        }
+                        print(init_params, node_opt.mse)
+                        mse_list.append(node_opt.mse)
+            
             best_mse = float(np.nanmin(mse_list))
             self.logger.info(
                 f"[final-opt] global top-10 optimized MSEs (min={best_mse:.3e}): "
@@ -362,6 +390,8 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             
             return best_mse
 
+        return -self.best.r2
+        
     def predict(self, X:np.ndarray|pd.DataFrame|Dict[str,np.ndarray]) -> np.ndarray:
         """
         Args:
@@ -634,7 +664,6 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 A = cached_result['A']
                 print(f"[CACHE HIT] 使用缓存的优化结果，hash: {expr_hash[:8]}...")
             else:
-                import copy
                 og_calc = copy.deepcopy(self.calculator)
                 if self.other_params_name and len(self.other_params_name) > 0:
                     raise NotImplementedError('other_params is not supported yet')

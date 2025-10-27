@@ -447,7 +447,7 @@ class Calculator:
         
         return res_func_list
     
-    def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train", sample_ratio=0.3, seed=42, debug_eval=False, eval_time_budget=None):
+    def get_loss_func(self, deci_list_len, reg_scale=1, pool_size=5, mode="train", sample_ratio=1, seed=42, debug_eval=False, eval_time_budget=None):
         """
         Args:
         deci_list_len: int, length of decision dictionary for regularization.
@@ -467,16 +467,13 @@ class Calculator:
         reg_list = lambda params: [deci_list_len, len(params), tot_count_ops]
         reg_func = lambda params: reg_coefs.dot(np.array(reg_list(params)))
 
-        # 获取数据并创建采样索引
         if mode == "train":
             args_data = self.train_args
         else:
             args_data = self.valid_args
             
-    # 创建可复现的随机采样索引 - 采样多个空间区域和时间步
         np.random.seed(seed)
         if len(args_data) > 0:
-            # 根据是否有时间维度确定空间维度的位置
             if self.has_time:
                 # 形状: (x, y, t, ...) -> 前两个是空间维度，第三个是时间维度
                 spatial_shape = args_data[0].shape[:2]  # (nx, ny)

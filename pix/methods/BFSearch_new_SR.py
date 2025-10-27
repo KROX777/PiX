@@ -1,6 +1,5 @@
 import pprint
 import numpy as np
-from joblib import Parallel, delayed
 import time as time_module
 import random
 from pix.hypotheses_tree import LightTree
@@ -8,6 +7,9 @@ from pix.hypotheses_tree import HypothesesTree
 from pix.utils.others import *
 import sympy as sp
 from pix.utils.scipy_utils import optimize_with_timeout
+from pix.methods.SR4MDL.search import search as sr4mdl_search
+import copy
+import logging
 
 class EarlyStopException(Exception):
     """Custom exception to signal early stopping"""
@@ -145,52 +147,90 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 gt_func = sp.lambdify(gamma_sym, gt_expr, 'numpy')
                 gt = gt_func(gamma)
 
-                t_min, t_max = 81, 90
+                t_min, t_max = 81, 85
+                Fx = 0
                 
-                # mu_x0 = np.stack([gt[0, :, :], gt[0, :, :]], axis=-1)  # Shape: (ny, nt, 2)
-                # mu_y0 = np.stack([gt[:, 0, :], gt[:, 0, :]], axis=-1)  # Shape: (nx, nt, 2)
-                # mu_xN = np.stack([gt[-1, :, :], gt[-1, :, :]], axis=-1)    # (ny, nt, 2)
-                # mu_yN = np.stack([gt[:, -1, :], gt[:, -1, :]], axis=-1)    # (nx, nt, 2)
+                # Bind the imported search function into a local name so the inner obj closure
+                # doesn't treat it as a free variable from an outer scope. This avoids rare Python
+                # scoping issues where a name might be considered unbound in closures.
+                sr_search_fn = sr4mdl_search
 
-                mu = run_solver(tree.calculator.args_data, 
-                                t_min=t_min, 
-                                t_max=t_max, 
-                                dx=tree.calculator.dx, 
-                                dy=tree.calculator.dy, 
-                                dt=tree.calculator.dt,
-                                gt=gt)
-                sl = slice(t_min, t_max + 1)
-                mu_sub = mu[:, :, sl, 0]
-                
-                gamma_flat = gamma[:, :, sl].flatten()
-                mu_flat = mu_sub.flatten()
-                # drop non-finite pairs, then sort by gamma
-                mask = np.isfinite(gamma_flat) & np.isfinite(mu_flat)
-                gamma_flat = gamma_flat[mask]
-                mu_flat = mu_flat[mask]
-                order = np.argsort(gamma_flat)
-                gamma_sorted = gamma_flat[order]
-                mu_sorted = mu_flat[order]
+                def obj(x):
+                    mu = run_solver(tree.calculator.args_data, 
+                                    t_min=t_min, 
+                                    t_max=t_max, 
+                                    dx=tree.calculator.dx, 
+                                    dy=tree.calculator.dy, 
+                                    dt=tree.calculator.dt,
+                                    gt=gt,
+                                    Fx=Fx,
+                                    Fy=x)
+                    sl = slice(t_min, t_max + 1)
+                    mu_sub = mu[:, :, sl, 0]
+                    
+                    gamma_flat = gamma[:, :, sl].flatten()
+                    mu_flat = mu_sub.flatten()
+                    # drop non-finite pairs, then sort by gamma
+                    mask = np.isfinite(gamma_flat) & np.isfinite(mu_flat)
+                    gamma_flat = gamma_flat[mask]
+                    mu_flat = mu_flat[mask]
+                    order = np.argsort(gamma_flat)
+                    gamma_sorted = gamma_flat[order]
+                    mu_sorted = mu_flat[order]
+                    calculator_copy = copy.deepcopy(tree.calculator)
+                    expr, loss = sr_search_fn(calculator=calculator_copy, 
+                                               y_name='mu', 
+                                               x_name=['gamma'], 
+                                               other_params_name=None,
+                                               deci_list_len=len(deci_list),
+                                               X_override={'gamma': gamma_sorted}, 
+                                               y_override=mu_sorted, 
+                                               mode="inverse", 
+                                               n_iter=30, 
+                                               is_final_optim=False,
+                                               log_every_n_iters=25)
+                    print(expr, loss)
+                    return loss
 
-                from pix.methods.SR4MDL.search import search as sr4mdl_search
-                expr, loss = sr4mdl_search(calculator=tree.calculator, y_name='mu', x_name=['gamma'], other_params_name=None,
-                                  deci_list_len=len(deci_list),
-                                  X_override={'gamma': gamma_sorted}, y_override=mu_sorted, mode="inverse")
+                from scipy.optimize import dual_annealing
+                bounds = [(7, 10)]
+                class Callback:
+                    def __init__(self, maxfun):
+                        self.maxfun = maxfun
+                        self.nfun = 0
+                    def __call__(self, x, f, context):
+                        # called periodically by dual_annealing; increment local counter
+                        # Note: dual_annealing can perform multiple function evaluations
+                        # between callback invocations, so relying on callback alone
+                        # may not strictly limit the total 'obj' calls. Use the
+                        # built-in `maxfun` parameter to enforce a hard limit.
+                        self.nfun += 1
+                        try:
+                            logging.getLogger(__name__).info("dual_annealing callback called: %d/%d", self.nfun, self.maxfun)
+                        except Exception:
+                            pass
+                        return self.nfun >= self.maxfun  # 达到次数后终止
+
+                # Pass `maxfun` to enforce a hard cap on objective evaluations.
+                # Keep the callback for logging/extra early-stop signalling.
+                result = dual_annealing(
+                    obj,
+                    bounds=bounds,
+                    maxfun=100,
+                    callback=Callback(maxfun=100),
+                    seed=42            # 随机种子（可选）
+                )
                 
-                print(expr, loss)
-                
-                expr, loss = sr4mdl_search(calculator=tree.calculator, y_name='mu', x_name=['gamma'], other_params_name=None,
-                                  deci_list_len=len(deci_list),
-                                  X_override={'gamma': gamma_sorted}, y_override=mu_sorted, mode="inverse")
+                logger = logging.getLogger(__name__)
+                logger.info("dual_annealing result.x: %s", result.x)
+                c = input("Press Enter to continue...")
                             
             else:
                 raise NotImplementedError(f"SR target '{y}' not supported yet in directxy method.")
         else:
-            from pix.methods.SR4MDL.search import search as sr4mdl_search
+            # Use globally imported sr4mdl_search to avoid creating a local binding
             sr4mdl_search(tree.calculator, y, x_vars, params_name, len(deci_list))
-        return
-    
-    # ---return infos---
+    return
     if verbose:
         print('Loss', sol['fun'])
     

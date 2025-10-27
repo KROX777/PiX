@@ -40,7 +40,7 @@ normalize_y: true
 
 # ----------------- Search-specific options -----------------
 # Target function: either an equation 'f=...' or a dataset name
-function: 'f=0.1*x**0.3'
+function: 'f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01'
 
 # Data sampling
 domain: 'x1:1,20'

@@ -356,3 +356,4 @@ variables:
 - v
 - rho
 - p
+gt_expression: 0.01 + 0.01 * cos(gamma) / gamma + 0.01 * log(gamma)

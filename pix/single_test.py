@@ -5,6 +5,7 @@ Users can input hypothesis IDs and run targeted tests.
 
 import sys
 import os
+import time
 import hydra
 import logging
 from pathlib import Path
@@ -20,112 +21,84 @@ sys.path.insert(0, project_root)
 ROOT_DIR = os.getcwd()
 sys.path.append(ROOT_DIR)
 
-# Import and initialize logger to match search.py
-try:
-    from nd2py.utils import init_logger
-    import time
-    # Create log directory and file for single_test
-    log_dir = os.path.join('./results/single_test')
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, f"{time.strftime('%Y%m%d_%H%M%S')}.log")
-    init_logger('sr4mdl', 'single_test', log_file)
-except ImportError:
-    # Fallback if nd2py not available
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure a shared log file for this session and initialize SR4MDL logger early
+SHARED_LOG_DIR = os.path.join(ROOT_DIR, 'results', 'logs', time.strftime('%Y%m%d_%H%M%S'))
+SHARED_LOG_FILE = os.path.join(SHARED_LOG_DIR, 'pix.log')
+os.makedirs(SHARED_LOG_DIR, exist_ok=True)
+# If not already set by a parent process, set shared log file for downstream modules (e.g., SR4MDL.search)
+os.environ.setdefault('PIX_LOG_FILE', SHARED_LOG_FILE)
 
+# Import SR4MDL.search early so it picks up PIX_LOG_FILE and initializes the shared logger
+try:
+    from pix.methods.SR4MDL import search as _sr4mdl_search  # noqa: F401
+except Exception:
+    # Defer errors until the mode that needs it; not all modes import SR4MDL
+    _sr4mdl_search = None
+
+# Set up console logging for immediate feedback; use the shared 'sr4mdl' logger tree to unify outputs
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger('sr4mdl.single_test')
+logger.propagate = True  # ensure it bubbles up to the 'sr4mdl' handlers initialized by SR4MDL.search
+logger.info(f"Shared log file: {os.environ.get('PIX_LOG_FILE')}")
 
 def validate_hypothesis_combination(cfg, hypothesis_ids):
-    """
-    验证假设组合是否有效
+    from hypotheses_tree import LightTree
+    light_tree = LightTree(cfg, ROOT_DIR)
+    all_valid_combinations = light_tree.generate_all_possibilities()
+
+    if hypothesis_ids in all_valid_combinations:
+        return True, "组合有效", []
+
+    error_messages = []
+    suggestions = []
+    node_to_branch = {}  # 记录每个根分支下选择的节点
     
-    Args:
-        cfg: 配置对象
-        hypothesis_ids: 假设编号列表
+    for hyp_id in hypothesis_ids:
+        if hyp_id == 0:
+            continue  # 跳过根节点
+
+        root_branch = find_root_branch(light_tree, hyp_id)
+        if root_branch not in node_to_branch:
+            node_to_branch[root_branch] = []
+        node_to_branch[root_branch].append(hyp_id)
+    
+    # 检查每个分支是否只有一个有效路径
+    for branch, selected_nodes in node_to_branch.items():
+        branch_paths = light_tree._get_all_paths_from_node(branch)
         
-    Returns:
-        tuple: (is_valid, error_message, suggested_combinations)
-    """
-    try:
-        from hypotheses_tree import LightTree
+        # 检查选择的节点是否构成一个有效路径
+        valid_path_found = False
+        for path in branch_paths:
+            if set(selected_nodes).issubset(set(path)):
+                # 检查是否选择了完整路径（到叶子节点）
+                if selected_nodes[-1] == path[-1]:  # 最后一个是叶子节点
+                    valid_path_found = True
+                    break
         
-        # 创建轻量级树来验证
-        light_tree = LightTree(cfg, ROOT_DIR)
-        
-        # 生成所有有效的组合
-        all_valid_combinations = light_tree.generate_all_possibilities()
-        
-        # 检查用户输入的组合是否在有效组合中
-        if hypothesis_ids in all_valid_combinations:
-            return True, "组合有效", []
-        
-        # 如果无效，分析原因并提供建议
-        error_messages = []
-        suggestions = []
-        
-        # 检查是否有重复的分支选择
-        node_to_branch = {}  # 记录每个根分支下选择的节点
-        
-        for hyp_id in hypothesis_ids:
-            if hyp_id == 0:
-                continue  # 跳过根节点
-                
-            # 找到这个节点属于哪个根分支
-            root_branch = find_root_branch(light_tree, hyp_id)
-            if root_branch not in node_to_branch:
-                node_to_branch[root_branch] = []
-            node_to_branch[root_branch].append(hyp_id)
-        
-        # 检查每个分支是否只有一个有效路径
-        for branch, selected_nodes in node_to_branch.items():
-            branch_paths = light_tree._get_all_paths_from_node(branch)
+        if not valid_path_found:
+            branch_node = light_tree.nodes[branch]
+            error_messages.append(f"分支 '{branch_node.name}' (ID: {branch}) 的选择无效")
             
-            # 检查选择的节点是否构成一个有效路径
-            valid_path_found = False
+            # 提供该分支的有效选择
             for path in branch_paths:
-                if set(selected_nodes).issubset(set(path)):
-                    # 检查是否选择了完整路径（到叶子节点）
-                    if selected_nodes[-1] == path[-1]:  # 最后一个是叶子节点
-                        valid_path_found = True
-                        break
-            
-            if not valid_path_found:
-                branch_node = light_tree.nodes[branch]
-                error_messages.append(f"分支 '{branch_node.name}' (ID: {branch}) 的选择无效")
-                
-                # 提供该分支的有效选择
-                for path in branch_paths:
-                    path_names = [light_tree.nodes[nid].name for nid in path]
-                    suggestions.append(f"分支 {branch_node.name}: {' -> '.join(path_names)} (IDs: {path})")
-        
-        # 检查是否遗漏了某些必需的分支
-        root_children = light_tree.root.children_nodes
-        selected_branches = set(node_to_branch.keys())
-        missing_branches = set(root_children) - selected_branches
-        
-        if missing_branches:
-            for branch_id in missing_branches:
-                branch_node = light_tree.nodes[branch_id]
-                error_messages.append(f"缺少分支 '{branch_node.name}' (ID: {branch_id}) 的选择")
-        
-        error_message = "; ".join(error_messages) if error_messages else "未知验证错误"
-        
-        return False, error_message, suggestions[:5]  # 最多显示5个建议
-        
-    except Exception as e:
-        return False, f"验证过程中出错: {e}", []
+                path_names = [light_tree.nodes[nid].name for nid in path]
+                suggestions.append(f"分支 {branch_node.name}: {' -> '.join(path_names)} (IDs: {path})")
+    
+    # 检查是否遗漏了某些必需的分支
+    root_children = light_tree.root.children_nodes
+    selected_branches = set(node_to_branch.keys())
+    missing_branches = set(root_children) - selected_branches
+    
+    if missing_branches:
+        for branch_id in missing_branches:
+            branch_node = light_tree.nodes[branch_id]
+            error_messages.append(f"缺少分支 '{branch_node.name}' (ID: {branch_id}) 的选择")
+    
+    error_message = "; ".join(error_messages) if error_messages else "未知验证错误"
+    
+    return False, error_message, suggestions[:5]  # 最多显示5个建议
 
 def find_root_branch(light_tree, node_id):
-    """
-    找到节点所属的根分支
-    
-    Args:
-        light_tree: LightTree 实例
-        node_id: 节点ID
-        
-    Returns:
-        int: 根分支的ID
-    """
     current_id = node_id
     while current_id != 0:
         node = light_tree.nodes[current_id]
@@ -135,16 +108,6 @@ def find_root_branch(light_tree, node_id):
     return 0
 
 def get_valid_combinations_sample(cfg, max_samples=5):
-    """
-    获取一些有效组合的示例
-    
-    Args:
-        cfg: 配置对象
-        max_samples: 最大示例数量
-        
-    Returns:
-        list: 有效组合示例
-    """
     try:
         from hypotheses_tree import LightTree
         
@@ -216,38 +179,18 @@ def reload_config():
         return None
 
 def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearch", verbose=True):
-    """
-    运行单个测试，使用指定的假设编号组合
-    每次测试都会重新初始化所有组件
-    
-    Args:
-        cfg: 配置对象
-        root_dir: 项目根目录
-        hypothesis_ids: 要测试的假设编号列表，例如 [1, 3, 5]
-        mode: 测试模式，"bfsearch" 或 "bfsearch_new_sr"
-        verbose: 是否显示详细信息
-    
-    Returns:
-        dict: 测试结果字典
-    """
     print(f"\n=== 运行单个测试 (模式: {mode}) ===")
     print(f"假设编号组合: {hypothesis_ids}")
-    print("重新初始化所有组件...")
     
     try:
-        # 清理可能存在的全局状态和模块缓存
         import gc
-        print("清理内存和模块缓存...")
         clear_module_cache()
         gc.collect()
-        
-        # 根据模式导入不同的 single_test 函数
+
         if mode.lower() == "bfsearch":
-            from methods.BFSearch import single_test
-            print("使用 BFSearch 模式")
+            from pix.methods.BFSearch import single_test
         elif mode.lower() == "bfsearch_new_sr":
             from pix.methods.BFSearch_new_SR import single_test
-            print("使用 BFSearch_new_SR 模式")
         else:
             print(f"错误: 未知的模式 '{mode}'，支持的模式: 'bfsearch', 'bfsearch_new_sr'")
             return None
@@ -259,16 +202,15 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
         if fresh_cfg is None:
             print("错误: 无法重新加载配置")
             return None
-        
-        print("开始测试...")
-        
-        # 运行单个测试，每次都从头开始
+
+        logger.info("开始单次测试 | 模式=%s | 假设=%s", mode, hypothesis_ids)
+
         result = single_test(
             cfg=fresh_cfg,
             root_dir=root_dir,
             deci_list=hypothesis_ids,
-            deleted_coef=[],  # 每次都是空的删除系数列表
-            init_params=None,  # 每次都重新随机初始化参数
+            deleted_coef=[],
+            init_params=None,
             verbose=verbose
         )
         
@@ -280,6 +222,18 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
             print(f"用时: {result['time']:.2f} 秒")
             print(f"迭代次数: {result['nit']}")
             print(f"状态: {result['status']}")
+            try:
+                logger.info(
+                    "测试完成 | 训练损失=%.6f | 验证损失=%.6f | 假设组合=%s | 用时=%.2fs | 迭代=%s | 状态=%s",
+                    result.get('train_loss', float('nan')),
+                    result.get('valid_loss', float('nan')),
+                    result.get('deci_list'),
+                    result.get('time', float('nan')),
+                    result.get('nit'),
+                    result.get('status')
+                )
+            except Exception:
+                pass
             
             if verbose and 'params' in result:
                 print("\n参数值:")
@@ -291,6 +245,7 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
                 
         else:
             print("测试失败，返回结果为 None")
+            logger.warning("测试失败，返回结果为 None | 模式=%s | 假设=%s", mode, hypothesis_ids)
             
         return result
         
@@ -298,6 +253,7 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
         print(f"测试过程中出现错误: {e}")
         import traceback
         traceback.print_exc()
+        logger.exception("测试过程中出现错误: %s", e)
         return None
 
 def show_available_hypotheses(cfg):
@@ -323,15 +279,9 @@ def show_available_hypotheses(cfg):
         print("错误: 配置中没有找到假设列表")
 
 def select_test_mode():
-    """
-    让用户选择测试模式
-    
-    Returns:
-        str: 选择的模式 ("bfsearch" 或 "bfsearch_new_sr")
-    """
     print("\n=== 选择测试模式 ===")
-    print("1. BFSearch (原版)")
-    print("2. BFSearch_new_SR (新版，支持符号回归)")
+    print("1. BFSearch")
+    print("2. BFSearch_new_SR")
     
     while True:
         try:
@@ -348,19 +298,11 @@ def select_test_mode():
             return None
 
 def interactive_single_test():
-    """
-    交互式单个测试函数
-    允许用户输入假设编号组合并运行测试
-    每次测试都会重新初始化所有组件
-    """
     print("=== PiX 单个测试工具 ===")
-    
-    # 选择测试模式
     mode = select_test_mode()
     if mode is None:
         return
-    
-    # 先加载配置显示可用假设
+
     try:
         cfg = reload_config()
         if cfg is None:
@@ -440,31 +382,14 @@ def interactive_single_test():
 
 @hydra.main(version_base=None, config_path="cfg", config_name="config")
 def main_hydra(cfg):
-    """
-    使用 Hydra 配置的主函数
-    """
     warnings.filterwarnings("ignore", category=RuntimeWarning)
-    
     workspace_dir = Path.cwd()
     logger.info(f"工作空间: {workspace_dir}")
     logger.info(f"项目根目录: {ROOT_DIR}")
     
-    # 这里可以添加从配置文件读取假设编号的逻辑
-    # 或者调用交互式函数
     interactive_single_test()
 
 def test_with_specific_hypotheses(hypothesis_ids, mode="bfsearch"):
-    """
-    直接测试指定的假设编号组合
-    每次调用都会重新初始化所有组件
-    
-    Args:
-        hypothesis_ids: 假设编号列表，例如 [1, 3, 5]
-        mode: 测试模式，"bfsearch" 或 "bfsearch_new_sr"
-    
-    Returns:
-        dict: 测试结果
-    """
     return run_single_test_with_hypotheses(
         cfg=None,  # 传入None，函数内部会重新加载配置
         root_dir=ROOT_DIR,
@@ -474,7 +399,6 @@ def test_with_specific_hypotheses(hypothesis_ids, mode="bfsearch"):
     )
 
 if __name__ == "__main__":
-    # 可以选择运行交互式模式或直接测试
     import sys
     
     if len(sys.argv) > 1:

@@ -10,7 +10,7 @@ Definitions aligned with diagnose_mu_constant and raw args (no re-differentiatio
     - b = ∇·(2S) with components using provided second derivatives directly:
                 b_x = 2*u_xx + u_yy + v_xy
                 b_y = u_xy + v_xx + 2*v_yy
-    - Q = rho*(du/dt + (u·∇)u + u (∇·u)) + ∇p, component-wise
+    - Q = rho*(du/dt + (u·∇)u + u (∇·u)) + ∇p + F, component-wise
 
 Args index mapping (from Calculator/DataLoader args_data; order per var = [var, x, y, xx, yx, xy, yy, t]):
         For u block (start=0):
@@ -23,6 +23,8 @@ Args index mapping (from Calculator/DataLoader args_data; order per var = [var, 
             24:p, 25:p_x, 26:p_y, 27:p_xx, 28:p_yx, 29:p_xy, 30:p_yy, 31:p_t
 """
 import numpy as np
+import logging
+import time
 from typing import Optional
 
 from scipy.sparse import lil_matrix, csr_matrix, eye as sparse_eye, vstack as sparse_vstack
@@ -628,7 +630,7 @@ def compute_pde_residual_pointwise(
         "t_range": (int(t_min), int(t_max)),
     }
 
-def assemble_A_b_Q_from_args(args):
+def assemble_A_b_Q_from_args(args, Fx, Fy):
     """Assemble (A, b, Q) directly from args with the same formulas as diagnose_mu_constant.
 
     Returns:
@@ -700,6 +702,10 @@ def assemble_A_b_Q_from_args(args):
     Q[..., 0] = rho * (u_t + u * u_x + v * u_y + u * div_u) + p_x
     Q[..., 1] = rho * (v_t + u * v_x + v * v_y + v * div_u) + p_y
 
+    # Add external forces Fx and Fy
+    Q[..., 0] += Fx
+    Q[..., 1] += Fy
+
     return A, b, Q
 
 
@@ -718,6 +724,8 @@ def run_solver(
     gt: np.ndarray = None,
     solve_mode: str = "ls",  # "ls" (joint least squares) or "compwise"
     verbose: bool = False,
+    Fx: float = 0.0,
+    Fy: float = 0.0,
 ):
     """Assemble A, b, Q from the provided fields in `args`.
 
@@ -733,8 +741,12 @@ def run_solver(
     Returns:
         mu: array shape (nx, ny, nt, 2) solution of A·∇μ + μb = Q.
     """
+    logger = logging.getLogger('sr4mdl.pde_solver')
+    logger.info("[pde_solver] Starting PDE solving for Fy=%f", Fy)
+    t0 = time.perf_counter()
     # Assemble fields using the diagnose-consistent helper
-    A, b, Q = assemble_A_b_Q_from_args(args)
+    A, b, Q = assemble_A_b_Q_from_args(args, Fx, Fy)
+    t1 = time.perf_counter()
 
     # infer grid sizes from Q shape
     nx, ny, nt, _ = Q.shape
@@ -743,7 +755,14 @@ def run_solver(
     if t_max is None:
         t_max = nt - 1
 
+    # logger.info(
+    #     "[pde_solver] Assembled A,b,Q with shape A=%s, b=%s, Q=%s; grid=(%d,%d,%d); t_range=[%d,%d]; mode=%s; eps=%.1e; dt=%.4f",
+    #     tuple(A.shape), tuple(b.shape), tuple(Q.shape), nx, ny, nt, int(t_min), int(t_max), solve_mode, regularize_eps, dt
+    # )
+    # logger.info("[pde_solver] Assembly time: %.3f s", (t1 - t0))
+
     # Solve requested time slices
+    t2 = time.perf_counter()
     if solve_mode == "ls":
         mu = solve_pde_scalar_ls(
             A, b, Q,
@@ -762,6 +781,8 @@ def run_solver(
             t_max=t_max,
             regularize_eps=regularize_eps,
         )
+    t3 = time.perf_counter()
+    logger.info("[pde_solver] Solve time: %.3f s (mode=%s)", (t3 - t2), solve_mode)
 
     if verbose:
         # Diagnostics only over solved time window
@@ -779,10 +800,12 @@ def run_solver(
         max_v = float(np.max(mu_sub))
         mean_v = float(np.mean(mu_sub))
 
-        print(
+        msg = (
             f"[solver3] t in [{t_min},{t_max}] -> mu(comp0) L2 abs={l2_abs:.3e}, rel={l2_rel:.3e}, "
             f"min={min_v:.3e}, max={max_v:.3e}, mean={mean_v:.3e}; shape={mu.shape}"
         )
+        print(msg)
+        logger.info(msg)
 
     # Matrix-operator residuals for solved mu
     if verbose:
@@ -801,10 +824,12 @@ def run_solver(
             mu_yN=mu_yN,
             n_clip=5,
         )
-        print(
+        msg = (
             f"[solver3] Residual (operator) using solved mu: ALL mse={res_mu['all']['mse']:.3e}, l2={res_mu['all']['l2']:.3e}, max|r|={res_mu['all']['max_abs']:.3e}; "
             f"comp0 mse={res_mu['comp0']['mse']:.3e}, comp1 mse={res_mu['comp1']['mse']:.3e}"
         )
+        print(msg)
+        logger.info(msg)
 
     # Also report residuals when plugging GT
     if verbose and gt is not None:
@@ -823,10 +848,12 @@ def run_solver(
             mu_yN=mu_yN,
             n_clip=5,
         )
-        print(
+        msg = (
             f"[solver3] Residual (operator) using GT:     ALL mse={res_gt['all']['mse']:.3e}, l2={res_gt['all']['l2']:.3e}, max|r|={res_gt['all']['max_abs']:.3e}; "
             f"comp0 mse={res_gt['comp0']['mse']:.3e}, comp1 mse={res_gt['comp1']['mse']:.3e}"
         )
+        print(msg)
+        logger.info(msg)
 
     # Pointwise residual (SON-style) for GT for reference
     if verbose and FiniteDiffVand is not None and gt is not None:
@@ -841,10 +868,12 @@ def run_solver(
             t_max=t_max,
             n_clip=5,
         )
-        print(
+        msg = (
             f"[solver3] Residual (pointwise) using GT:  ALL mse={alt['all']['mse']:.3e}, l2={alt['all']['l2']:.3e}, max|r|={alt['all']['max_abs']:.3e}; "
             f"comp0 mse={alt['comp0']['mse']:.3e}, comp1 mse={alt['comp1']['mse']:.3e}"
         )
+        print(msg)
+        logger.info(msg)
 
     # Optional: save a representative slice if index available
     if verbose:
@@ -853,4 +882,5 @@ def run_solver(
             np.savetxt('mu_slice.txt', mu[:, :, slice_t, 0], fmt='%.6f', header=f'PDE Solved (mu[:, :, {slice_t}, 0])')
             if gt is not None and gt.shape[2] > slice_t:
                 np.savetxt('gt_slice.txt', gt[:, :, slice_t], fmt='%.6f', header=f'GT for comparison (gt[:, :, {slice_t}])')
+            logger.info("[solver3] Saved mu_slice.txt and gt_slice.txt for t=%d", slice_t)
     return mu

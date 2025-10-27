@@ -99,9 +99,18 @@ except Exception:
 args.save_dir = os.path.join('./results/search/', args.name)
 os.makedirs(args.save_dir, exist_ok=True)
 
-init_logger('sr4mdl', args.name, os.path.join(args.save_dir, 'info.log'))
+# Initialize logging: if PIX_LOG_FILE is set, use that for a shared log; otherwise default
+_shared_log_file = _os.getenv('PIX_LOG_FILE')
+if _shared_log_file:
+    try:
+        _os.makedirs(_os.path.dirname(_shared_log_file), exist_ok=True)
+    except Exception:
+        pass
+    init_logger('sr4mdl', args.name, _shared_log_file)
+else:
+    init_logger('sr4mdl', args.name, os.path.join(args.save_dir, 'info.log'))
 logger = logging.getLogger('sr4mdl.search')
-# logger.info(args)  # Commented out to avoid verbose config output
+logger.info(args)
 seed_all(args.seed)
 def handler(signum, frame): raise KeyboardInterrupt
 signal.signal(signal.SIGINT, handler)
@@ -172,9 +181,10 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     return binary_ops, unary_ops, leaf_ops
 
 def search(calculator=None, y_name=None, x_name=None, other_params_name=None, deci_list_len=None,
-           X_override=None, y_override=None, mode="inverse"):
+           X_override=None, y_override=None, mode="inverse", n_iter=None, is_final_optim=True, log_every_n_iters=1):
     global _model_loaded, _cached_tokenizer, _cached_model
     if not _model_loaded:
+        t0 = time.perf_counter()
         _cached_tokenizer = Tokenizer(-100, 100, 4, args.max_var)
         model_path = os.path.join(os.path.dirname(__file__), args.load_model)
         try:
@@ -207,12 +217,27 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
             use_SENet=True,
             use_old_model=args.use_old_model,
         )
+        t1 = time.perf_counter()
         _cached_model = MDLformer(model_args, state_dict['xy_token_list'])
         _cached_model.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)
         _cached_model.eval()
         _model_loaded = True
+        t2 = time.perf_counter()
+        try:
+            logger.info(
+                "[SR4MDL] Tokenizer init: %.3fs | Model build+load: %.3fs | device=%s | model_path=%s",
+                (t1 - t0), (t2 - t1), str(safe_device), model_path
+            )
+        except Exception:
+            pass
     tokenizer = _cached_tokenizer
     model = _cached_model
+    if _model_loaded:
+        logger.debug("[SR4MDL] Using cached model+tokenizer")
+    
+    # Override n_iter if provided
+    if n_iter is not None:
+        args.n_iter = n_iter
     # 1) Dataset override mode: if X_override and y_override are provided, use them directly.
     if X_override is not None and y_override is not None:
         # Accept dict-like X or numpy array; y as 1D array-like
@@ -468,7 +493,7 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
         child_num=args.child_num,
         n_playout=args.n_playout,
         d_playout=args.d_playout,
-        log_per_sec=5,
+        log_per_sec=float('inf'),
         save_path=os.path.join(args.save_dir, 'records.json'),
         eta=args.eta,
         disable_prod_model=args.disable_prod_model,
@@ -482,6 +507,7 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
         other_params_name=other_params_name,
         deci_list_len=deci_list_len,
         mode=mode,
+        log_every_n_iters=log_every_n_iters,
     )
 
     # Inject extra leaf constants AFTER estimator build (no harm if duplicates) but before fit
@@ -502,7 +528,7 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
             logger.warning(f"Failed parsing extra_leaf '{args.extra_leaf}': {e}")
 
     try:
-        loss = est.fit(X, y, use_tqdm=False)
+        loss = est.fit(X, y, use_tqdm=False, is_final_optim=is_final_optim)
         logger.info('Finished')
     except KeyboardInterrupt:
         logger.note('Interrupted')

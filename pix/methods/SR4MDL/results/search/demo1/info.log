@@ -1,0 +1,561 @@
+[demo1|search|I|Oct25 14:43:31|0:00:00.000195] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.1*x**0.3
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:43:33|0:00:02.053464] [SR4MDL] Tokenizer init: 1.937s | Model build+load: 0.114s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:43:33|0:00:02.053672] [SR4MDL] Using cached model+tokenizer
+[demo1|search|W|Oct25 14:43:33|0:00:02.055832] (search.py:375) Filtered non-finite samples: 512 -> 251
+[demo1|search|N|Oct25 14:43:33|0:00:02.056049] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct25 14:43:33|0:00:02.056117] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct25 14:43:33|0:00:02.056164] Using custom leaf constants only: []
+[demo1|search|N|Oct25 14:43:33|0:00:02.056215] target function: f=0.1*x**0.3
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [x]
+        domain: {'x1': [1.0, 20.0], 'x': [-5.0, 5.0]}
+[demo1|mcts|I|Oct25 14:43:47|0:00:16.701746] Iter: 50 | Reward: 0.98963 | Complexity: 10 | R2: 0.99958 | MDL: 33.91040 | Best: [x, sqrt(x)] (N=0, Q=0.00, MDL=34) | Best equation: 0.028091 + -0.009514 * x + 0.080837 * sqrt(x) | Speed: 293ms/iter (1.5ms/iter) | Time: None | Current: [x, log(sqrt(x)), x / sqrt(x), exp(log(x) / x), sin(x / sqrt(x)), sqrt(x), sqrt(x) * sqrt(x), log(x) / x] (N=1, Q=0.98, MDL=32)
+[demo1|search|N|Oct25 14:43:55|0:00:24.125407] Interrupted
+[demo1|search|I|Oct25 14:44:41|0:00:00.000168] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01cos(x)/x + 0.01log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:44:42|0:00:00.973447] [SR4MDL] Tokenizer init: 0.871s | Model build+load: 0.101s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:44:42|0:00:00.973652] [SR4MDL] Using cached model+tokenizer
+[demo1|search|I|Oct25 14:44:54|0:00:00.000161] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/x + 0.01*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:44:55|0:00:01.306519] [SR4MDL] Tokenizer init: 1.221s | Model build+load: 0.084s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:44:55|0:00:01.306899] [SR4MDL] Using cached model+tokenizer
+[demo1|search|W|Oct25 14:44:55|0:00:01.332033] (search.py:375) Filtered non-finite samples: 512 -> 251
+[demo1|search|N|Oct25 14:44:55|0:00:01.332290] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct25 14:44:55|0:00:01.332356] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct25 14:44:55|0:00:01.332409] Using custom leaf constants only: []
+[demo1|search|N|Oct25 14:44:55|0:00:01.332474] target function: f=0.01*cos(x)/x+0.01*log(x)+0.01
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [x]
+        domain: {'x1': [1.0, 20.0], 'x': [-5.0, 5.0]}
+[demo1|mcts|I|Oct25 14:44:58|0:00:04.379037] Iter: 12 | Reward: 0.98708 | Complexity: 13 | R2: 1.00000 | MDL: 39.36636 | Best: [x, cos(x) / x, cos(x), x * exp(x), log(x), log(exp(x)), sqrt(log(exp(x)))] (N=0, Q=0.00, MDL=39) | Best equation: 0.01 + 0.01 * cos(x) / x + 0.01 * log(x) | Speed: 251ms/iter (1.2ms/iter) | Time: None | Current: [x, x + exp(x), x + exp(x) + exp(x), cos(x + exp(x)), log(x)] (N=1, Q=0.99, MDL=39)
+[demo1|mcts|N|Oct25 14:44:58|0:00:04.379363] Early stopping at iter 12 with R2 1.0 ([x, cos(x) / x, cos(x), x * exp(x), log(x), log(exp(x)), sqrt(log(exp(x)))])
+[demo1|search|I|Oct25 14:44:58|0:00:04.379470] Finished
+[demo1|search|I|Oct25 14:46:23|0:00:00.000178] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/x^2 + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt,Pow
+          custom_leaf_ops: 2, 3, 4
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:46:25|0:00:01.690205] [SR4MDL] Tokenizer init: 1.604s | Model build+load: 0.084s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:46:25|0:00:01.690429] [SR4MDL] Using cached model+tokenizer
+[demo1|search|I|Oct25 14:46:47|0:00:00.000152] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/x + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt,Pow
+          custom_leaf_ops: 2, 3, 4
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:46:48|0:00:00.869032] [SR4MDL] Tokenizer init: 0.784s | Model build+load: 0.084s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:46:48|0:00:00.869284] [SR4MDL] Using cached model+tokenizer
+[demo1|search|W|Oct25 14:46:48|0:00:00.891521] (search.py:375) Filtered non-finite samples: 512 -> 251
+[demo1|search|W|Oct25 14:46:48|0:00:00.891757] (search.py:163) Unknown unary operator: Pow. Available: ['Sin', 'Cos', 'Tan', 'Log', 'Exp', 'Sqrt', 'Inv', 'Neg', 'Pow2', 'Pow3', 'Arcsin', 'Arccos', 'Cot', 'Tanh']
+[demo1|search|N|Oct25 14:46:48|0:00:00.891924] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct25 14:46:48|0:00:00.891984] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct25 14:46:48|0:00:00.892065] Using custom leaf constants only: ['2', '3', '4']
+[demo1|search|N|Oct25 14:46:48|0:00:00.892152] target function: f=0.01*cos(x)/x+0.01*x*log(x)+0.01
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: [2, 3, 4]
+        variables: [x]
+        domain: {'x1': [1.0, 20.0], 'x': [-5.0, 5.0]}
+[demo1|search|N|Oct25 14:47:00|0:00:12.839644] Interrupted
+[demo1|search|I|Oct25 14:47:13|0:00:00.000164] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:47:14|0:00:00.827219] [SR4MDL] Tokenizer init: 0.741s | Model build+load: 0.085s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:47:14|0:00:00.827418] [SR4MDL] Using cached model+tokenizer
+[demo1|search|W|Oct25 14:47:14|0:00:00.848284] (search.py:375) Filtered non-finite samples: 512 -> 251
+[demo1|search|N|Oct25 14:47:14|0:00:00.848493] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct25 14:47:14|0:00:00.848561] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct25 14:47:14|0:00:00.848604] Using custom leaf constants only: []
+[demo1|search|N|Oct25 14:47:14|0:00:00.848657] target function: f=0.01*cos(x)/(x*x)+0.01*x*log(x)+0.01
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [x]
+        domain: {'x1': [1.0, 20.0], 'x': [-5.0, 5.0]}
+[demo1|mcts|I|Oct25 14:47:29|0:00:15.108951] Iter: 50 | Reward: 0.97683 | Complexity: 21 | R2: 0.99756 | MDL: 24.02337 | Best: [x, log(x), log(x) / (x * (x + x))] (N=0, Q=0.00, MDL=24) | Best equation: -0.029933 + 0.050942 * x + -0.078389 * log(x) + -0.006683 * log(x) / (x * (x + x)) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [x, log(sqrt(x)), x / sqrt(x), exp(log(x) / x), sin(x / sqrt(x)), sqrt(x), sqrt(x) * sqrt(x), log(x) / x] (N=1, Q=0.96, MDL=33)
+[demo1|mcts|I|Oct25 14:47:44|0:00:30.932335] Iter: 100 | Reward: 0.97767 | Complexity: 21 | R2: 0.99842 | MDL: 32.97718 | Best: [x, cos(sqrt(x) / x), sqrt(sqrt(x)) / x] (N=0, Q=0.00, MDL=33) | Best equation: -0.970727 + 0.033546 * x + 0.820763 * cos(sqrt(x) / x) + 0.511296 * sqrt(sqrt(x)) / x | Speed: 301ms/iter (1.5ms/iter) | Time: None | Current: [x, log(x) * log(x), log(x), log(x + x), x / (x + x), x / log(x + x), sqrt(sqrt(x) / x), cos(x)] (N=1, Q=0.97, MDL=34)
+[demo1|mcts|I|Oct25 14:47:53|0:00:39.484303] Iter: 127 | Reward: 0.98314 | Complexity: 17 | R2: 1.00000 | MDL: 44.02045 | Best: [x, sin(x), log(x) * x, cos(x) / (x * x), x * x / x, log(x), x + x / cos(x), cos(x)] (N=0, Q=0.00, MDL=44) | Best equation: 0.01 + 0.01 * log(x) * x + 0.01 * cos(x) / (x * x) | Speed: 304ms/iter (1.5ms/iter) | Time: None | Current: [x, x * x, cos(x) / x, cos(x) / (x * x), x * x / x, log(x), x + x / cos(x), cos(x)] (N=1, Q=0.98, MDL=44)
+[demo1|mcts|N|Oct25 14:47:53|0:00:39.484665] Early stopping at iter 127 with R2 1.0 ([x, sin(x), log(x) * x, cos(x) / (x * x), x * x / x, log(x), x + x / cos(x), cos(x)])
+[demo1|search|I|Oct25 14:47:53|0:00:39.484764] Finished
+[demo1|search|I|Oct25 14:56:49|0:00:00.000222] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:56:51|0:00:02.072495] [SR4MDL] Tokenizer init: 1.967s | Model build+load: 0.103s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:56:51|0:00:02.072758] [SR4MDL] Using cached model+tokenizer
+[demo1|search|W|Oct25 14:56:51|0:00:02.099023] (search.py:375) Filtered non-finite samples: 512 -> 251
+[demo1|search|N|Oct25 14:56:51|0:00:02.099264] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct25 14:56:51|0:00:02.099329] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct25 14:56:51|0:00:02.099374] Using custom leaf constants only: []
+[demo1|search|N|Oct25 14:56:51|0:00:02.099426] target function: f=0.01*cos(x)/(x*x)+0.01*x*log(x)+0.01
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [x]
+        domain: {'x1': [1.0, 20.0], 'x': [-5.0, 5.0]}
+[demo1|mcts|I|Oct25 14:57:03|0:00:14.529276] Iter: 50 | Reward: 0.97918 | Complexity: 21 | R2: 0.99998 | MDL: 42.00000 | Best: [x, x / (x * x * x), x * x] (N=0, Q=0.00, MDL=42) | Best equation: -0.003443 + 0.007483 * x + 0.010034 * x / (x * x * x) + 0.002322 * x * x | Speed: 249ms/iter (1.2ms/iter) | Time: None | Current: [x, sin(x), sin(x + x * x), log(x / (x * x)), x * sin(x), sin(x) + x, cos(sqrt(sin(x)))] (N=1, Q=0.96, MDL=56)
+[demo1|mcts|I|Oct25 14:57:20|0:00:31.036068] Iter: 100 | Reward: 0.97918 | Complexity: 21 | R2: 0.99998 | MDL: 42.00000 | Best: [x, x / (x * x * x), x * x] (N=0, Q=0.00, MDL=42) | Best equation: -0.003443 + 0.007483 * x + 0.010034 * x / (x * x * x) + 0.002322 * x * x | Speed: 289ms/iter (1.4ms/iter) | Time: None | Current: [x, sqrt(x), sin(x), x * x * x * x, sin(exp(x)), exp(sqrt(x)), exp(x) * exp(x), x * x, exp(x)] (N=1, Q=0.95, MDL=45)
+[demo1|mcts|I|Oct25 14:57:36|0:00:47.484625] Iter: 150 | Reward: 0.97918 | Complexity: 21 | R2: 0.99998 | MDL: 42.00000 | Best: [x, x / (x * x * x), x * x] (N=0, Q=0.00, MDL=42) | Best equation: -0.003443 + 0.007483 * x + 0.010034 * x / (x * x * x) + 0.002322 * x * x | Speed: 303ms/iter (1.5ms/iter) | Time: None | Current: [x, sqrt(x), exp(x), log(x / exp(x)), exp(x) * exp(x), x * log(log(x)), sqrt(exp(x) * exp(x)), x + exp(x)] (N=1, Q=0.95, MDL=32)
+[demo1|search|I|Oct25 14:57:36|0:00:47.484958] Finished
+[demo1|search|I|Oct25 14:57:56|0:00:00.000156] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|I|Oct25 14:57:57|0:00:00.842988] [SR4MDL] Tokenizer init: 0.753s | Model build+load: 0.089s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct25 14:57:57|0:00:00.843197] [SR4MDL] Using cached model+tokenizer
+[demo1|search|W|Oct25 14:57:57|0:00:00.863628] (search.py:375) Filtered non-finite samples: 512 -> 251
+[demo1|search|N|Oct25 14:57:57|0:00:00.882873] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct25 14:57:57|0:00:00.882944] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct25 14:57:57|0:00:00.882983] Using custom leaf constants only: []
+[demo1|search|N|Oct25 14:57:57|0:00:00.883033] target function: f=0.01*cos(x)/(x*x)+0.01*x*log(x)+0.01
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [x]
+        domain: {'x1': [1.0, 20.0], 'x': [-5.0, 5.0]}
+[demo1|mcts|I|Oct25 14:58:11|0:00:15.138566] Iter: 50 | Reward: 0.97683 | Complexity: 21 | R2: 0.99756 | MDL: 24.02337 | Best: [x, log(x), log(x) / (x * (x + x))] (N=0, Q=0.00, MDL=24) | Best equation: -0.029933 + 0.050942 * x + -0.078389 * log(x) + -0.006683 * log(x) / (x * (x + x)) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [x, log(sqrt(x)), x / sqrt(x), exp(log(x) / x), sin(x / sqrt(x)), sqrt(x), sqrt(x) * sqrt(x), log(x) / x] (N=1, Q=0.96, MDL=33)
+[demo1|mcts|I|Oct25 14:58:27|0:00:30.747503] Iter: 100 | Reward: 0.97767 | Complexity: 21 | R2: 0.99842 | MDL: 32.97718 | Best: [x, cos(sqrt(x) / x), sqrt(sqrt(x)) / x] (N=0, Q=0.00, MDL=33) | Best equation: -0.970727 + 0.033546 * x + 0.820763 * cos(sqrt(x) / x) + 0.511296 * sqrt(sqrt(x)) / x | Speed: 299ms/iter (1.5ms/iter) | Time: None | Current: [x, log(x) * log(x), log(x), log(x + x), x / (x + x), x / log(x + x), sqrt(sqrt(x) / x), cos(x)] (N=1, Q=0.97, MDL=34)
+[demo1|mcts|I|Oct25 14:58:36|0:00:39.396506] Iter: 127 | Reward: 0.98314 | Complexity: 17 | R2: 1.00000 | MDL: 44.02045 | Best: [x, sin(x), log(x) * x, cos(x) / (x * x), x * x / x, log(x), x + x / cos(x), cos(x)] (N=0, Q=0.00, MDL=44) | Best equation: 0.01 + 0.01 * log(x) * x + 0.01 * cos(x) / (x * x) | Speed: 303ms/iter (1.5ms/iter) | Time: None | Current: [x, x * x, cos(x) / x, cos(x) / (x * x), x * x / x, log(x), x + x / cos(x), cos(x)] (N=1, Q=0.98, MDL=44)
+[demo1|mcts|N|Oct25 14:58:36|0:00:39.396950] Early stopping at iter 127 with R2 1.0 ([x, sin(x), log(x) * x, cos(x) / (x * x), x * x / x, log(x), x + x / cos(x), cos(x)])
+[demo1|search|I|Oct25 14:58:36|0:00:39.397062] Finished
