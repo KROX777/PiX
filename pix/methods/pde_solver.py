@@ -27,103 +27,103 @@ import logging
 import time
 from typing import Optional
 
-from scipy.sparse import lil_matrix, csr_matrix, eye as sparse_eye, vstack as sparse_vstack
+from scipy.sparse import lil_matrix, csr_matrix, eye as sparse_eye, vstack as sparse_vstack, block_diag, hstack
+from scipy.sparse import diags as sparse_diags
 from scipy.sparse.linalg import spsolve
+from scipy.optimize import lsq_linear
 import warnings
-try:
-    from finitediff import FiniteDiffVand
-except Exception:
-    FiniteDiffVand = None
+from ..utils.finite_diff import FiniteDiffVand
 
-def solve_pde(A, b, Q, dx, dy, dt=None, mu_x0=None, mu_y0=None, mu_xN=None, mu_yN=None, t_min=0, t_max=5, regularize_eps=0.0):
-    """
-    Solve the steady-state PDE: A · ∇μ + μb = Q using finite differences.
+# Deprecated
+# def solve_pde(A, b, Q, dx, dy, dt=None, mu_x0=None, mu_y0=None, mu_xN=None, mu_yN=None, t_min=0, t_max=5, regularize_eps=0.0):
+#     """
+#     Solve the steady-state PDE: A · ∇μ + μb = Q using finite differences.
     
-    Parameters:
-    - A: (nx, ny, nt, 2, 2) matrix field
-    - b: (nx, ny, nt, 2) vector field
-    - Q: (nx, ny, nt, 2) source term
-    - dx, dy: spatial step sizes
-    - dt: ignored (kept for compatibility)
-    - mu_x0: (ny, nt, 2) boundary values at x=0
-    - mu_y0: (nx, nt, 2) boundary values at y=0
-    - mu_xN: (ny, nt, 2) boundary values at x=nx-1
-    - mu_yN: (nx, nt, 2) boundary values at y=ny-1
-    - t_min, t_max: inclusive time index range to solve. Values are clamped to [0, nt-1].
-                    If t_min > t_max after clamping, a ValueError is raised.
-    - regularize_eps: small diagonal regularization added to the operator (>=0)
+#     Parameters:
+#     - A: (nx, ny, nt, 2, 2) matrix field
+#     - b: (nx, ny, nt, 2) vector field
+#     - Q: (nx, ny, nt, 2) source term
+#     - dx, dy: spatial step sizes
+#     - dt: ignored (kept for compatibility)
+#     - mu_x0: (ny, nt, 2) boundary values at x=0
+#     - mu_y0: (nx, nt, 2) boundary values at y=0
+#     - mu_xN: (ny, nt, 2) boundary values at x=nx-1
+#     - mu_yN: (nx, nt, 2) boundary values at y=ny-1
+#     - t_min, t_max: inclusive time index range to solve. Values are clamped to [0, nt-1].
+#                     If t_min > t_max after clamping, a ValueError is raised.
+#     - regularize_eps: small diagonal regularization added to the operator (>=0)
     
-    Returns:
-    - mu: (nx, ny, nt, 2) solution field
-    """
-    nx, ny, nt, _ = Q.shape
-    # Clamp t range
-    if t_min is None:
-        t_min = 0
-    if t_max is None:
-        t_max = nt - 1
-    t_min = max(0, int(t_min))
-    t_max = min(nt - 1, int(t_max))
-    if t_min > t_max:
-        raise ValueError(f"Invalid t range: t_min={t_min} > t_max={t_max}")
-    mu = np.zeros((nx, ny, nt, 2), dtype=np.float64)
+#     Returns:
+#     - mu: (nx, ny, nt, 2) solution field
+#     """
+#     nx, ny, nt, _ = Q.shape
+#     # Clamp t range
+#     if t_min is None:
+#         t_min = 0
+#     if t_max is None:
+#         t_max = nt - 1
+#     t_min = max(0, int(t_min))
+#     t_max = min(nt - 1, int(t_max))
+#     if t_min > t_max:
+#         raise ValueError(f"Invalid t range: t_min={t_min} > t_max={t_max}")
+#     mu = np.zeros((nx, ny, nt, 2), dtype=np.float64)
 
-    # For each time step (subset for speed)
-    for t in range(t_min, t_max + 1):
-        # Initialize solution array for current time step
-        mu_t = np.zeros((nx, ny, 2), dtype=np.float64)
+#     # For each time step (subset for speed)
+#     for t in range(t_min, t_max + 1):
+#         # Initialize solution array for current time step
+#         mu_t = np.zeros((nx, ny, 2), dtype=np.float64)
         
-        # Solve for each component (x and y)
-        for comp in [0, 1]:  # x (0) and y (1) components
-            # Construct finite difference operator and right-hand side
-            L, rhs = construct_operator(
-                A[..., t, :, :], 
-                b[..., t, :], 
-                Q[..., t, comp], 
-                dx, dy, 
-                comp,
-                mu_x0[:, t, comp] if mu_x0 is not None else None,
-                mu_y0[:, t, comp] if mu_y0 is not None else None,
-                mu_xN[:, t, comp] if mu_xN is not None else None,
-                mu_yN[:, t, comp] if mu_yN is not None else None
-            )
+#         # Solve for each component (x and y)
+#         for comp in [0, 1]:  # x (0) and y (1) components
+#             # Construct finite difference operator and right-hand side
+#             L, rhs = construct_operator(
+#                 A[..., t, :, :], 
+#                 b[..., t, :], 
+#                 Q[..., t, comp], 
+#                 dx, dy, 
+#                 comp,
+#                 mu_x0[:, t, comp] if mu_x0 is not None else None,
+#                 mu_y0[:, t, comp] if mu_y0 is not None else None,
+#                 mu_xN[:, t, comp] if mu_xN is not None else None,
+#                 mu_yN[:, t, comp] if mu_yN is not None else None
+#             )
             
-            # Convert to CSR format for efficient solving
-            L_csr = L.tocsr()
+#             # Convert to CSR format for efficient solving
+#             L_csr = L.tocsr()
 
-            # Optional regularization
-            if regularize_eps and regularize_eps > 0.0:
-                L_csr = L_csr + regularize_eps * sparse_eye(L_csr.shape[0], format="csr")
+#             # Optional regularization
+#             if regularize_eps and regularize_eps > 0.0:
+#                 L_csr = L_csr + regularize_eps * sparse_eye(L_csr.shape[0], format="csr")
 
-            # Fast structural check: any zero rows means underdetermined at those nodes
-            row_nnz = np.diff(L_csr.indptr)
-            has_zero_rows = np.any(row_nnz == 0)
+#             # Fast structural check: any zero rows means underdetermined at those nodes
+#             row_nnz = np.diff(L_csr.indptr)
+#             has_zero_rows = np.any(row_nnz == 0)
 
-            try:
-                if has_zero_rows:
-                    raise RuntimeError("operator has structurally zero rows")
-                mu_flat = spsolve(L_csr, rhs)
-                # Guard against NaNs/Infs
-                if not np.all(np.isfinite(mu_flat)):
-                    raise RuntimeError("non-finite solution from spsolve")
-            except Exception as e:
-                # Retry with a small diagonal regularization
-                try:
-                    reg_eps = max(regularize_eps, 1e-8)
-                    L_reg = L_csr + reg_eps * sparse_eye(L_csr.shape[0], format="csr")
-                    mu_flat = spsolve(L_reg, rhs)
-                    if not np.all(np.isfinite(mu_flat)):
-                        raise RuntimeError("non-finite solution after regularization")
-                    warnings.warn(f"Solved with regularization eps={reg_eps} at t={t}, comp={comp}: {e}")
-                except Exception as e2:
-                    warnings.warn(f"Solver failed at time step {t}, component {comp}: {str(e2)}. Using zero solution.")
-                    mu_flat = np.zeros(rhs.shape)
+#             try:
+#                 if has_zero_rows:
+#                     raise RuntimeError("operator has structurally zero rows")
+#                 mu_flat = spsolve(L_csr, rhs)
+#                 # Guard against NaNs/Infs
+#                 if not np.all(np.isfinite(mu_flat)):
+#                     raise RuntimeError("non-finite solution from spsolve")
+#             except Exception as e:
+#                 # Retry with a small diagonal regularization
+#                 try:
+#                     reg_eps = max(regularize_eps, 1e-8)
+#                     L_reg = L_csr + reg_eps * sparse_eye(L_csr.shape[0], format="csr")
+#                     mu_flat = spsolve(L_reg, rhs)
+#                     if not np.all(np.isfinite(mu_flat)):
+#                         raise RuntimeError("non-finite solution after regularization")
+#                     warnings.warn(f"Solved with regularization eps={reg_eps} at t={t}, comp={comp}: {e}")
+#                 except Exception as e2:
+#                     warnings.warn(f"Solver failed at time step {t}, component {comp}: {str(e2)}. Using zero solution.")
+#                     mu_flat = np.zeros(rhs.shape)
             
-            mu_t[..., comp] = mu_flat.reshape((nx, ny))
+#             mu_t[..., comp] = mu_flat.reshape((nx, ny))
         
-        mu[..., t, :] = mu_t
+#         mu[..., t, :] = mu_t
     
-    return mu
+#     return mu
 
 def solve_pde_scalar_ls(
     A,
@@ -139,6 +139,10 @@ def solve_pde_scalar_ls(
     t_min: int = 0,
     t_max: Optional[int] = None,
     reg_ls: float = 1e-8,
+    rho: Optional[np.ndarray] = None,
+    estimate_g_global: bool = False,
+    reg_g: float = 1e-8,
+    g_bounds: Optional[tuple] = None,
 ):
     """
     Solve for a single scalar μ that best fits BOTH momentum components in a
@@ -163,6 +167,141 @@ def solve_pde_scalar_ls(
 
     mu_out = np.zeros((nx, ny, nt, 2), dtype=np.float64)
 
+    # If user requests a global g estimate across time, assemble a global
+    # augmented linear system where g is a single scalar unknown shared across
+    # all solved time slices. Otherwise solve per-time independently (existing behavior).
+    times = list(range(t_min, t_max + 1))
+    if estimate_g_global:
+        if rho is None:
+            raise ValueError("rho must be provided to estimate global g")
+
+        # Collect per-time blocks
+        L_blocks = []
+        rhs_blocks = []
+        rho_cols = []
+        for t in times:
+            L0, rhs0 = construct_operator(
+                A[..., t, :, :],
+                b[..., t, :],
+                Q[..., t, 0],
+                dx,
+                dy,
+                0,
+                x0_bc=mu_x0[:, t, 0] if mu_x0 is not None else None,
+                y0_bc=mu_y0[:, t, 0] if mu_y0 is not None else None,
+                xN_bc=mu_xN[:, t, 0] if mu_xN is not None else None,
+                yN_bc=mu_yN[:, t, 0] if mu_yN is not None else None,
+                use_4th_boundary=False,
+            )
+            L1, rhs1 = construct_operator(
+                A[..., t, :, :],
+                b[..., t, :],
+                Q[..., t, 1],
+                dx,
+                dy,
+                1,
+                x0_bc=mu_x0[:, t, 1] if mu_x0 is not None else None,
+                y0_bc=mu_y0[:, t, 1] if mu_y0 is not None else None,
+                xN_bc=mu_xN[:, t, 1] if mu_xN is not None else None,
+                yN_bc=mu_yN[:, t, 1] if mu_yN is not None else None,
+                use_4th_boundary=False,
+            )
+
+            L_stack = sparse_vstack([L0.tocsr(), L1.tocsr()], format="csr")
+            rhs_stack = np.concatenate([rhs0, rhs1], axis=0)
+
+            # rho contribution: zeros for comp0 rows, rho_flat for comp1 rows
+            rho_flat = rho[..., t].reshape(nx * ny)
+            rho_stack = np.concatenate([np.zeros_like(rho_flat), rho_flat], axis=0)
+
+            L_blocks.append(L_stack)
+            rhs_blocks.append(rhs_stack)
+            rho_cols.append(rho_stack)
+
+        # Block-diagonal assembly for L and concatenation for rhs and rho
+        L_block = block_diag(L_blocks, format="csr")
+        rhs_total = np.concatenate(rhs_blocks, axis=0)
+        rho_total = np.concatenate(rho_cols, axis=0)
+
+        # Augment L with a single column for g
+        rho_col = csr_matrix(rho_total).reshape((-1, 1))
+        A_aug = hstack([L_block, rho_col], format="csr")
+
+        # Solve bounded least-squares using scipy.optimize.lsq_linear if available.
+        # We implement Tikhonov regularization by appending scaled identity rows.
+        A_csr = A_aug.tocsr()
+        rhs_total = rhs_total
+
+        # Prepare augmentation for regularization (sparse) if requested
+        aug_As = [A_csr]
+        aug_bs = [rhs_total]
+        n_unknowns = A_csr.shape[1]
+        mu_unknowns = n_unknowns - 1
+
+        if reg_ls and reg_ls > 0.0:
+            sqrt_mu = float(np.sqrt(reg_ls))
+            rows_mu = sparse_diags([sqrt_mu] * mu_unknowns, 0, shape=(mu_unknowns, mu_unknowns), format='csr')
+            pad = csr_matrix((mu_unknowns, 1), dtype=np.float64)
+            regA_mu = hstack([rows_mu, pad], format='csr')
+            aug_As.append(regA_mu)
+            aug_bs.append(np.zeros(mu_unknowns, dtype=np.float64))
+
+        if reg_g and reg_g > 0.0:
+            sqrt_g = float(np.sqrt(reg_g))
+            reg_row = csr_matrix((1, n_unknowns), dtype=np.float64)
+            reg_row[0, -1] = sqrt_g
+            aug_As.append(reg_row)
+            aug_bs.append(np.array([0.0], dtype=np.float64))
+
+        A_for_lsq = sparse_vstack(aug_As, format='csr')
+        rhs_for_lsq = np.concatenate(aug_bs, axis=0)
+
+        # Build bounds for unknowns: default unbounded, g bounded if provided
+        lb = -np.inf * np.ones(n_unknowns, dtype=np.float64)
+        ub = np.inf * np.ones(n_unknowns, dtype=np.float64)
+        if g_bounds is not None:
+            lb[-1] = float(g_bounds[0])
+            ub[-1] = float(g_bounds[1])
+
+        x = None
+        try:
+            # lsq_linear accepts sparse A in recent SciPy versions; use 'trf' method
+            res = lsq_linear(A_for_lsq, rhs_for_lsq, bounds=(lb, ub), method='trf', verbose=0)
+            if not res.success:
+                raise RuntimeError("lsq_linear failed")
+            x = res.x
+        except Exception:
+            # Fallback to normal equations solve (previous behavior)
+            Lt = A_csr.transpose().tocsr()
+            Normal = Lt @ A_csr
+            rhs_normal = Lt @ rhs_total
+            # diagonal regularization
+            diag_reg = np.ones(n_unknowns, dtype=np.float64) * float(max(reg_ls, 0.0))
+            diag_reg[-1] = float(max(reg_g, 0.0))
+            if np.any(diag_reg > 0.0):
+                Normal = Normal + sparse_diags(diag_reg, 0, format="csr")
+            try:
+                x = spsolve(Normal, rhs_normal)
+            except Exception:
+                Normal = Normal + 1e-12 * sparse_eye(Normal.shape[0], format="csr")
+                x = spsolve(Normal, rhs_normal)
+
+        # Extract mu and g
+        g_est = float(x[-1])
+        mu_all = x[:-1]
+        # reshape and place into output
+        for ti, t in enumerate(times):
+            start = ti * (nx * ny)
+            stop = start + (nx * ny)
+            mu_t_flat = mu_all[start:stop]
+            mu_t_scalar = mu_t_flat.reshape((nx, ny))
+            mu_out[..., t, 0] = mu_t_scalar
+            mu_out[..., t, 1] = mu_t_scalar
+
+        # Return both mu and the estimated global g when requested.
+        return mu_out, g_est
+
+    # Fallback: per-time independent solve (original behavior)
     for t in range(t_min, t_max + 1):
         # Build operators for both components sharing the SAME μ unknown vector
         L0, rhs0 = construct_operator(
@@ -630,7 +769,7 @@ def compute_pde_residual_pointwise(
         "t_range": (int(t_min), int(t_max)),
     }
 
-def assemble_A_b_Q_from_args(args, Fx, Fy):
+def assemble_A_b_Q_from_args(args):
     """Assemble (A, b, Q) directly from args with the same formulas as diagnose_mu_constant.
 
     Returns:
@@ -702,10 +841,6 @@ def assemble_A_b_Q_from_args(args, Fx, Fy):
     Q[..., 0] = rho * (u_t + u * u_x + v * u_y + u * div_u) + p_x
     Q[..., 1] = rho * (v_t + u * v_x + v * v_y + v * div_u) + p_y
 
-    # Add external forces Fx and Fy
-    Q[..., 0] += Fx
-    Q[..., 1] += Fy
-
     return A, b, Q
 
 
@@ -724,8 +859,7 @@ def run_solver(
     gt: np.ndarray = None,
     solve_mode: str = "ls",  # "ls" (joint least squares) or "compwise"
     verbose: bool = False,
-    Fx: float = 0.0,
-    Fy: float = 0.0,
+    estimate_g_global: bool = False
 ):
     """Assemble A, b, Q from the provided fields in `args`.
 
@@ -742,10 +876,10 @@ def run_solver(
         mu: array shape (nx, ny, nt, 2) solution of A·∇μ + μb = Q.
     """
     logger = logging.getLogger('sr4mdl.pde_solver')
-    logger.info("[pde_solver] Starting PDE solving for Fy=%f", Fy)
+    logger.info("[pde_solver] Starting PDE solving")
     t0 = time.perf_counter()
     # Assemble fields using the diagnose-consistent helper
-    A, b, Q = assemble_A_b_Q_from_args(args, Fx, Fy)
+    A, b, Q = assemble_A_b_Q_from_args(args)
     t1 = time.perf_counter()
 
     # infer grid sizes from Q shape
@@ -764,23 +898,37 @@ def run_solver(
     # Solve requested time slices
     t2 = time.perf_counter()
     if solve_mode == "ls":
-        mu = solve_pde_scalar_ls(
+        # Extract rho from args (args layout: rho at index 16)
+        rho_arg = args[16]
+
+        mu_res = solve_pde_scalar_ls(
             A, b, Q,
             dx=dx, dy=dy, dt=dt,
             mu_x0=mu_x0, mu_y0=mu_y0, mu_xN=mu_xN, mu_yN=mu_yN,
             t_min=t_min,
             t_max=t_max,
             reg_ls=max(regularize_eps, 1e-8),
+            rho=rho_arg,
+            estimate_g_global=estimate_g_global,
+            reg_g=max(regularize_eps, 1e-12),
         )
+
+        # solve_pde_scalar_ls returns (mu, g) when estimate_g_global=True
+        if isinstance(mu_res, tuple) and len(mu_res) == 2:
+            mu, g_est = mu_res
+            logger.info("[pde_solver] Estimated global g = %g", float(g_est))
+        else:
+            mu = mu_res
     else:
-        mu = solve_pde(
-            A, b, Q,
-            dx=dx, dy=dy, dt=dt,
-            mu_x0=mu_x0, mu_y0=mu_y0, mu_xN=mu_xN, mu_yN=mu_yN,
-            t_min=t_min,
-            t_max=t_max,
-            regularize_eps=regularize_eps,
-        )
+        raise NotImplementedError("Unsupported solve_mode '%s'" % solve_mode)
+        # mu = solve_pde(
+        #     A, b, Q,
+        #     dx=dx, dy=dy, dt=dt,
+        #     mu_x0=mu_x0, mu_y0=mu_y0, mu_xN=mu_xN, mu_yN=mu_yN,
+        #     t_min=t_min,
+        #     t_max=t_max,
+        #     regularize_eps=regularize_eps,
+        # )
     t3 = time.perf_counter()
     logger.info("[pde_solver] Solve time: %.3f s (mode=%s)", (t3 - t2), solve_mode)
 
@@ -883,4 +1031,7 @@ def run_solver(
             if gt is not None and gt.shape[2] > slice_t:
                 np.savetxt('gt_slice.txt', gt[:, :, slice_t], fmt='%.6f', header=f'GT for comparison (gt[:, :, {slice_t}])')
             logger.info("[solver3] Saved mu_slice.txt and gt_slice.txt for t=%d", slice_t)
+    # If a global g was estimated above we may have it in locals(); return it
+    if 'g_est' in locals():
+        return mu, float(g_est)
     return mu

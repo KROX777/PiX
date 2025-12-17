@@ -7,11 +7,7 @@ from pix.hypotheses_tree import HypothesesTree
 from pix.utils.others import *
 import sympy as sp
 from pix.utils.scipy_utils import optimize_with_timeout
-try:
-    from pix.methods.SR4MDL.search import search as sr4mdl_search
-except:
-    print("Error Loading SR4MDL")
-    sr4mdl_search = None
+from pix.methods.SR4MDL.search import search as sr4mdl_search
 import copy
 import logging
 
@@ -134,7 +130,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
         (y, x_vars) = SR_list[0]
         if method == "directxy":
             from pix.methods.pde_solver import run_solver
-            from pix.methods.hippylib_ns_inverse import run_solver_hippylib
+            # from pix.methods.hippylib_ns_inverse import run_solver_hippylib
             
             if y == "mu":
                 u_x = tree.calculator.args_data[1]
@@ -155,43 +151,38 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
 
                 t_min, t_max = 81, 85
                 Fx = 0
-                
-                # Bind the imported search function into a local name so the inner obj closure
-                # doesn't treat it as a free variable from an outer scope. This avoids rare Python
-                # scoping issues where a name might be considered unbound in closures.
+
                 sr_search_fn = sr4mdl_search
                 
-                # Choose solver method: 'ls', 'adjoint', or 'hippylib'
-                solver_method = cfg.get('inverse_solver', 'ls')
-                use_hippylib = (solver_method == 'hippylib')
+                use_hippylib = False
                 
-                if use_hippylib:
-                    print(f"[BFSearch] Using HIPPYLIB solver for μ estimation")
-                    gamma_reg = cfg.problem.get('gamma_regularization', 1e-6)   # wtf?
-                    maxiter_adj = cfg.get('adjoint_maxiter', 20)
+                # if use_hippylib:
+                #     print(f"[BFSearch] Using HIPPYLIB solver for μ estimation")
+                #     gamma_reg = cfg.problem.get('gamma_regularization', 1e-6)   # wtf?
+                #     maxiter_adj = cfg.get('adjoint_maxiter', 20)
 
                 def obj(x):
                     # x is Fy (external force in y-direction)
                     if use_hippylib:
-                        # Use hippylib FEniCS-based solver
-                        mu = run_solver_hippylib(
-                            tree.calculator.args_data,
-                            t_min=t_min,
-                            t_max=t_max,
-                            dx=tree.calculator.dx,
-                            dy=tree.calculator.dy,
-                            dt=tree.calculator.dt,
-                            gamma=gamma_reg,
-                            maxiter=maxiter_adj,
-                            gtol=1e-5,
-                            gt=gt,
-                            verbose=cfg.verbose,
-                            Fx=Fx,
-                            Fy=x
-                        )
+                        raise NotImplementedError("hippylib disabled")
+                        # # Use hippylib FEniCS-based solver
+                        # mu = run_solver_hippylib(
+                        #     tree.calculator.args_data,
+                        #     t_min=t_min,
+                        #     t_max=t_max,
+                        #     dx=tree.calculator.dx,
+                        #     dy=tree.calculator.dy,
+                        #     dt=tree.calculator.dt,
+                        #     gamma=gamma_reg,
+                        #     maxiter=maxiter_adj,
+                        #     gtol=1e-5,
+                        #     gt=gt,
+                        #     verbose=cfg.verbose,
+                        #     Fx=Fx,
+                        #     Fy=x
+                        # )
                     else:
-                        # Use original least-squares solver
-                        mu = run_solver(
+                        mu, g_est = run_solver(
                             tree.calculator.args_data, 
                             t_min=t_min, 
                             t_max=t_max, 
@@ -199,11 +190,13 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                             dy=tree.calculator.dy, 
                             dt=tree.calculator.dt,
                             gt=gt,
-                            Fx=Fx,
-                            Fy=x
+                            estimate_g_global=True
                         )
+                    
                     sl = slice(t_min, t_max + 1)
                     mu_sub = mu[:, :, sl, 0]
+                    print(mu_sub)
+                    print(g_est)
                     
                     gamma_flat = gamma[:, :, sl].flatten()
                     mu_flat = mu_sub.flatten()
@@ -223,38 +216,39 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                                                X_override={'gamma': gamma_sorted}, 
                                                y_override=mu_sorted, 
                                                mode="inverse", 
-                                               n_iter=30, 
+                                               n_iter=100, 
                                                is_final_optim=False,
                                                log_every_n_iters=25)
                     print(expr, loss)
                     return loss
 
-                from scipy.optimize import dual_annealing
-                bounds = [(7, 10)]
-                class Callback:
-                    def __init__(self, maxfun):
-                        self.maxfun = maxfun
-                        self.nfun = 0
-                    def __call__(self, x, f, context):
-                        self.nfun += 1
-                        try:
-                            logging.getLogger(__name__).info("dual_annealing callback called: %d/%d", self.nfun, self.maxfun)
-                        except Exception:
-                            pass
-                        return self.nfun >= self.maxfun  # 达到次数后终止
-
-                # Pass `maxfun` to enforce a hard cap on objective evaluations.
-                # Keep the callback for logging/extra early-stop signalling.
-                result = dual_annealing(
-                    obj,
-                    bounds=bounds,
-                    maxfun=100,
-                    callback=Callback(maxfun=100),
-                    seed=42
-                )
+                obj(0)  # Testing g=0
                 
-                logger = logging.getLogger(__name__)
-                logger.info("dual_annealing result.x: %s", result.x)
+                c = input("Press Enter...")
+
+                # from scipy.optimize import dual_annealing
+                # bounds = [(7, 10)]
+                # class Callback:
+                #     def __init__(self, maxfun):
+                #         self.maxfun = maxfun
+                #         self.nfun = 0
+                #     def __call__(self, x, f, context):
+                #         self.nfun += 1
+                #         try:
+                #             logging.getLogger(__name__).info("dual_annealing callback called: %d/%d", self.nfun, self.maxfun)
+                #         except Exception:
+                #             pass
+                #         return self.nfun >= self.maxfun  # 达到次数后终止
+                # result = dual_annealing(
+                #     obj,
+                #     bounds=bounds,
+                #     maxfun=100,
+                #     callback=Callback(maxfun=100),
+                #     seed=42
+                # )
+                
+                # logger = logging.getLogger(__name__)
+                # logger.info("dual_annealing result.x: %s", result.x)
                 c = input("Press Enter to continue...")
                             
             else:

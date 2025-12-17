@@ -1,0 +1,140 @@
+[demo1|search|I|Dec17 23:42:25|0:00:00.000119] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Dec17 23:42:25|0:00:00.002204] Shared log file: /Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/results/logs/20251217_234223/pix.log
+[demo1|search|I|Dec17 23:42:29|0:00:00.000153] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Dec17 23:42:29|0:00:00.022791] 开始单次测试 | 模式=bfsearch_new_sr | 假设=[0, 1, 2, 4, 5, 7, 8, 10, 14, 15, 32]
+[demo1|pde_solver|I|Dec17 23:42:30|0:00:00.643606] [pde_solver] Starting PDE solving
+[demo1|pde_solver|I|Dec17 23:42:32|0:00:03.068673] [pde_solver] Estimated global g = -9.81076
+[demo1|pde_solver|I|Dec17 23:42:32|0:00:03.068887] [pde_solver] Solve time: 2.362 s (mode=ls)
+[demo1|search|N|Dec17 23:42:33|0:00:03.901788] CUDA not available: forcing model device to CPU
+[demo1|search|I|Dec17 23:42:33|0:00:04.073556] [SR4MDL] Tokenizer init: 0.754s | Model build+load: 0.171s | device=cpu | model_path=/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Dec17 23:42:33|0:00:04.073690] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Dec17 23:42:33|0:00:04.074790] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Dec17 23:42:33|0:00:04.074824] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Dec17 23:42:33|0:00:04.074846] Using custom leaf constants only: []
+[demo1|search|N|Dec17 23:42:33|0:00:04.074878] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|W|Dec17 23:42:33|0:00:04.075017] (pix/methods/SR4MDL/sr4mdl/search/mcts.py:203) Unknown args: log_per_sec=inf
+[demo1|mcts|I|Dec17 23:44:05|0:01:36.005440] Iter: 25 | Reward: 0.97025 | Complexity: 18 | R2: 0.98773 | MDL: 21.52874 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.011972 + 5.8e-05 * gamma + 0.008874 * log(gamma) + 0.010446 * sin(cos(gamma) / gamma) | Speed: 3.7s/iter (18ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Dec17 23:45:56|0:03:26.427608] Iter: 50 | Reward: 0.97025 | Complexity: 18 | R2: 0.98773 | MDL: 21.52874 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.011972 + 5.8e-05 * gamma + 0.008874 * log(gamma) + 0.010446 * sin(cos(gamma) / gamma) | Speed: 4.0s/iter (20ms/iter) | Time: None | Current: [gamma, log(sqrt(gamma)), gamma / sqrt(gamma), exp(log(gamma) / gamma), sin(gamma / sqrt(gamma)), sqrt(gamma), sqrt(gamma) * sqrt(gamma), log(gamma) / gamma] (N=1, Q=0.95, MDL=35)
+[demo1|mcts|I|Dec17 23:48:03|0:05:33.558882] Iter: 75 | Reward: 0.97025 | Complexity: 18 | R2: 0.98773 | MDL: 21.52874 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.011972 + 5.8e-05 * gamma + 0.008874 * log(gamma) + 0.010446 * sin(cos(gamma) / gamma) | Speed: 4.4s/iter (22ms/iter) | Time: None | Current: [gamma, sqrt(gamma) / gamma, sqrt(sqrt(sqrt(gamma))), gamma + gamma, cos(gamma * gamma), gamma / cos(gamma * gamma), sqrt(sqrt(gamma)) / gamma, sqrt(sqrt(gamma))] (N=1, Q=0.96, MDL=46)
+[demo1|mcts|I|Dec17 23:50:01|0:07:31.761477] Iter: 100 | Reward: 0.97025 | Complexity: 18 | R2: 0.98773 | MDL: 21.52874 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.011972 + 5.8e-05 * gamma + 0.008874 * log(gamma) + 0.010446 * sin(cos(gamma) / gamma) | Speed: 4.5s/iter (22ms/iter) | Time: None | Current: [gamma, log(gamma) * log(gamma), log(gamma), log(gamma + gamma), gamma / (gamma + gamma), gamma / log(gamma + gamma), sqrt(sqrt(gamma) / gamma), cos(gamma)] (N=1, Q=0.96, MDL=34)
+[demo1|search|I|Dec17 23:50:01|0:07:31.762670] Finished

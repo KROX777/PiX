@@ -8,7 +8,6 @@ Symbolic regression isn't included in this class, offering more freedom.
 from pix.data_loader import DataLoader
 import numpy as np
 import sympy as sp
-import copy
 from pix.utils.sympy_utils import *
 from pix.utils.numpy_utils import np_grad_all, pooling
 from sklearn.model_selection import KFold
@@ -207,7 +206,7 @@ class Calculator:
                     parsed_expr = sp.sympify(v, locals=self.local_dict)
                     # 用实际表达式替换符号占位符
                     self.sp_derived_quantities[k] = parsed_expr
-                    self.local_dict[k] = parsed_expr  # 更新字典中的定义
+                    self.local_dict[k] = parsed_expr
                     print(f"Successfully parsed derived quantity '{k}': {v}")
                     del to_parse[k]  # 从待解析列表中移除
                     progress_made = True
@@ -379,12 +378,10 @@ class Calculator:
             base_func = sp.lambdify([self.args_symbols, params], sp_func, 'numpy')
             
             def stable_wrapper(args, params_vals):
-                # 添加数值稳定性检查，并确保结果为可处理的浮点数组
                 with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
                     try:
                         result = base_func(args, params_vals)
                     except Exception as e:
-                        # 返回一个大但有限的值
                         return np.full_like(args[0], 1e10)
 
                     # 尝试将结果转换为浮点数组；若为复数或无法转换，则进行降级处理
@@ -474,11 +471,9 @@ class Calculator:
         np.random.seed(seed)
         if len(args_data) > 0:
             if self.has_time:
-                # 形状: (x, y, t, ...) -> 前两个是空间维度，第三个是时间维度
                 spatial_shape = args_data[0].shape[:2]  # (nx, ny)
                 time_steps = args_data[0].shape[2]  # nt
             else:
-                # 形状: (x, y, ...) -> 前两个是空间维度
                 spatial_shape = args_data[0].shape[:2]  # (nx, ny)
                 time_steps = None
             
@@ -503,7 +498,6 @@ class Calculator:
                 spatial_regions.append((slice(start_x, start_x + region_height), 
                                       slice(start_y, start_y + region_width)))
             
-            # 时间步采样（如果有时间维度）
             if self.has_time and time_steps > 1:
                 # 采样部分时间步
                 n_time_samples = max(1, int(time_steps * sample_ratio * 0.3))
@@ -513,7 +507,6 @@ class Calculator:
                 time_indices = None
         
         def sample_args(args):
-            """对args进行多区域和时间步采样"""
             if len(args) == 0:
                 return args
             sampled_args = []
@@ -547,7 +540,6 @@ class Calculator:
             
             return sampled_args
 
-        t0_gen = time.time()
         # Pass original equation strings to keep labels aligned
         try:
             src_eqs = list(self.equation_buffer)
