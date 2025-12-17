@@ -399,9 +399,8 @@ class Calculator:
                     except Exception:
                         return np.full_like(args[0], 1e10)
 
-                    # 检查并处理 NaN / Inf
+                    # 对于无穷，保留符号，替换为大但有限的值；NaN 置 0
                     if np.any(~np.isfinite(arr)):
-                        # 对于无穷，保留符号，替换为大但有限的值；NaN 置 0
                         sign = np.sign(arr)
                         arr = np.where(np.isinf(arr), sign * 1e10, arr)
                         arr = np.where(np.isnan(arr), 0.0, arr)

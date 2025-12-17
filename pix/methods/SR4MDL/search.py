@@ -238,6 +238,7 @@ def search(calculator=None, y_name=None, x_name=None, other_params_name=None, de
     # Override n_iter if provided
     if n_iter is not None:
         args.n_iter = n_iter
+        
     # 1) Dataset override mode: if X_override and y_override are provided, use them directly.
     if X_override is not None and y_override is not None:
         # Accept dict-like X or numpy array; y as 1D array-like

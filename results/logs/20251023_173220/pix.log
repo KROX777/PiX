@@ -1,0 +1,1354 @@
+[demo1|search|I|Oct23 17:32:23|0:00:00.000231] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.1*x**0.3
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Oct23 17:32:23|0:00:00.002241] Shared log file: /home/ma-user/work/PiX/results/logs/20251023_173220/pix.log
+[demo1|search|I|Oct23 17:32:28|0:00:00.000283] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.1*x**0.3
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Oct23 17:32:28|0:00:00.042132] 开始单次测试 | 模式=bfsearch_new_sr | 假设=[0, 1, 2, 4, 5, 7, 8, 10, 14, 15, 32]
+[demo1|pde_solver|I|Oct23 17:32:33|0:00:04.810484] [pde_solver] Solve time: 3.209 s (mode=ls)
+[demo1|search|I|Oct23 17:32:36|0:00:07.790069] [SR4MDL] Tokenizer init: 2.581s | Model build+load: 0.100s | device=cuda | model_path=/home/ma-user/work/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Oct23 17:32:36|0:00:07.790355] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:32:36|0:00:07.791263] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:32:36|0:00:07.791354] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:32:36|0:00:07.791408] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:32:36|0:00:07.791468] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:32:43|0:00:15.142982] Iter: 25 | Reward: 0.95423 | Complexity: 18 | R2: 0.97074 | MDL: 22.53810 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.011867 + 6.3e-05 * gamma + 0.008889 * log(gamma) + 0.010386 * sin(cos(gamma) / gamma) | Speed: 294ms/iter (1.5ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:32:45|0:00:16.778370] Iter: 30 | Reward: 0.95423 | Complexity: 18 | R2: 0.97074 | MDL: 22.53810 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.011867 + 6.3e-05 * gamma + 0.008889 * log(gamma) + 0.010386 * sin(cos(gamma) / gamma) | Speed: 300ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:32:45|0:00:16.778776] Finished
+[demo1|pde_solver|I|Oct23 17:32:49|0:00:20.499331] [pde_solver] Solve time: 3.512 s (mode=ls)
+[demo1|search|D|Oct23 17:32:49|0:00:20.744309] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:32:49|0:00:20.745065] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:32:49|0:00:20.745169] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:32:49|0:00:20.745213] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:32:49|0:00:20.745258] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:32:56|0:00:27.524401] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.04177 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:32:57|0:00:29.340839] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.04177 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 287ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:32:57|0:00:29.341120] Finished
+[demo1|pde_solver|I|Oct23 17:33:01|0:00:32.557149] [pde_solver] Solve time: 3.020 s (mode=ls)
+[demo1|search|D|Oct23 17:33:01|0:00:32.775611] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:33:01|0:00:32.776406] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:33:01|0:00:32.776513] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:33:01|0:00:32.776562] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:33:01|0:00:32.776612] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:33:08|0:00:39.554135] Iter: 25 | Reward: 0.95034 | Complexity: 18 | R2: 0.96653 | MDL: 23.80561 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009837 + -1e-06 * gamma + 0.010023 * log(gamma) + 0.011169 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:33:09|0:00:41.387039] Iter: 30 | Reward: 0.95034 | Complexity: 18 | R2: 0.96653 | MDL: 23.80561 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009837 + -1e-06 * gamma + 0.010023 * log(gamma) + 0.011169 * sin(cos(gamma) / gamma) | Speed: 287ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=33)
+[demo1|search|I|Oct23 17:33:09|0:00:41.387310] Finished
+[demo1|pde_solver|I|Oct23 17:33:13|0:00:44.575756] [pde_solver] Solve time: 3.008 s (mode=ls)
+[demo1|search|D|Oct23 17:33:13|0:00:44.785716] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:33:13|0:00:44.786486] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:33:13|0:00:44.786593] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:33:13|0:00:44.786637] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:33:13|0:00:44.786685] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:33:20|0:00:51.702317] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.04177 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:33:21|0:00:53.274611] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.04177 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:33:21|0:00:53.274919] Finished
+[demo1|pde_solver|I|Oct23 17:33:25|0:00:56.824487] [pde_solver] Solve time: 3.383 s (mode=ls)
+[demo1|search|D|Oct23 17:33:25|0:00:56.995933] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:33:25|0:00:56.996726] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:33:25|0:00:56.996832] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:33:25|0:00:56.996873] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:33:25|0:00:56.996919] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:33:32|0:01:03.636579] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.04177 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:33:34|0:01:05.455399] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.04177 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:33:34|0:01:05.455734] Finished
+[demo1|pde_solver|I|Oct23 17:33:37|0:01:08.675116] [pde_solver] Solve time: 3.043 s (mode=ls)
+[demo1|search|D|Oct23 17:33:37|0:01:08.852757] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:33:37|0:01:08.853655] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:33:37|0:01:08.853759] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:33:37|0:01:08.853804] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:33:37|0:01:08.853857] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:33:44|0:01:15.799911] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.08094 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:33:46|0:01:17.626789] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.08094 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 292ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:33:46|0:01:17.627039] Finished
+[demo1|pde_solver|I|Oct23 17:33:49|0:01:21.124605] [pde_solver] Solve time: 3.317 s (mode=ls)
+[demo1|search|D|Oct23 17:33:49|0:01:21.318050] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:33:49|0:01:21.318826] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:33:49|0:01:21.318923] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:33:49|0:01:21.318965] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:33:49|0:01:21.319010] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:33:56|0:01:28.015876] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.08094 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:33:58|0:01:29.829662] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99672 | MDL: 22.08094 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009597 + -1.3e-05 * gamma + 0.010198 * log(gamma) + 0.010554 * sin(cos(gamma) / gamma) | Speed: 284ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:33:58|0:01:29.829988] Finished
+[demo1|pde_solver|I|Oct23 17:34:01|0:01:32.989091] [pde_solver] Solve time: 3.001 s (mode=ls)
+[demo1|search|D|Oct23 17:34:01|0:01:33.151650] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:34:01|0:01:33.152417] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:34:01|0:01:33.152517] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:34:01|0:01:33.152559] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:34:01|0:01:33.152605] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:34:08|0:01:40.110816] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05211 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009601 + -1.2e-05 * gamma + 0.010195 * log(gamma) + 0.010564 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:34:10|0:01:41.960509] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05211 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009601 + -1.2e-05 * gamma + 0.010195 * log(gamma) + 0.010564 * sin(cos(gamma) / gamma) | Speed: 294ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:34:10|0:01:41.960775] Finished
+[demo1|pde_solver|I|Oct23 17:34:14|0:01:45.517459] [pde_solver] Solve time: 3.401 s (mode=ls)
+[demo1|search|D|Oct23 17:34:14|0:01:45.685804] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:34:14|0:01:45.686570] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:34:14|0:01:45.686676] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:34:14|0:01:45.686721] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:34:14|0:01:45.686768] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:34:20|0:01:52.212799] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05211 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009601 + -1.2e-05 * gamma + 0.010195 * log(gamma) + 0.010564 * sin(cos(gamma) / gamma) | Speed: 261ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:34:22|0:01:53.990714] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05211 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009601 + -1.2e-05 * gamma + 0.010195 * log(gamma) + 0.010564 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:34:22|0:01:53.990972] Finished
+[demo1|pde_solver|I|Oct23 17:34:25|0:01:57.393022] [pde_solver] Solve time: 3.244 s (mode=ls)
+[demo1|search|D|Oct23 17:34:26|0:01:57.559479] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:34:26|0:01:57.560228] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:34:26|0:01:57.560342] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:34:26|0:01:57.560385] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:34:26|0:01:57.560438] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:34:32|0:02:04.093792] Iter: 25 | Reward: 0.97840 | Complexity: 18 | R2: 0.99616 | MDL: 22.13263 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009633 + -1.1e-05 * gamma + 0.010172 * log(gamma) + 0.010646 * sin(cos(gamma) / gamma) | Speed: 261ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:34:34|0:02:05.860483] Iter: 30 | Reward: 0.97840 | Complexity: 18 | R2: 0.99616 | MDL: 22.13263 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009633 + -1.1e-05 * gamma + 0.010172 * log(gamma) + 0.010646 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:34:34|0:02:05.860741] Finished
+[demo1|pde_solver|I|Oct23 17:34:37|0:02:09.306627] [pde_solver] Solve time: 3.288 s (mode=ls)
+[demo1|search|D|Oct23 17:34:38|0:02:09.461245] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:34:38|0:02:09.462002] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:34:38|0:02:09.462097] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:34:38|0:02:09.462152] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:34:38|0:02:09.462197] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:34:44|0:02:16.171462] Iter: 25 | Reward: 0.95982 | Complexity: 18 | R2: 0.97673 | MDL: 23.21014 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009792 + -3e-06 * gamma + 0.010056 * log(gamma) + 0.011054 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:34:46|0:02:18.000837] Iter: 30 | Reward: 0.95982 | Complexity: 18 | R2: 0.97673 | MDL: 23.21014 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009792 + -3e-06 * gamma + 0.010056 * log(gamma) + 0.011054 * sin(cos(gamma) / gamma) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:34:46|0:02:18.001115] Finished
+[demo1|pde_solver|I|Oct23 17:34:49|0:02:21.191897] [pde_solver] Solve time: 3.039 s (mode=ls)
+[demo1|search|D|Oct23 17:34:49|0:02:21.327857] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:34:49|0:02:21.328653] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:34:49|0:02:21.328757] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:34:49|0:02:21.328800] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:34:49|0:02:21.328849] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:34:56|0:02:28.394951] Iter: 25 | Reward: 0.95682 | Complexity: 18 | R2: 0.97353 | MDL: 23.40142 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009807 + -2e-06 * gamma + 0.010045 * log(gamma) + 0.011093 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:34:58|0:02:30.233746] Iter: 30 | Reward: 0.95682 | Complexity: 18 | R2: 0.97353 | MDL: 23.40142 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009807 + -2e-06 * gamma + 0.010045 * log(gamma) + 0.011093 * sin(cos(gamma) / gamma) | Speed: 297ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=34)
+[demo1|search|I|Oct23 17:34:58|0:02:30.234009] Finished
+[demo1|pde_solver|I|Oct23 17:35:01|0:02:33.427023] [pde_solver] Solve time: 3.042 s (mode=ls)
+[demo1|search|D|Oct23 17:35:02|0:02:33.596095] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:35:02|0:02:33.596844] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:35:02|0:02:33.596939] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:35:02|0:02:33.596981] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:35:02|0:02:33.597027] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:35:09|0:02:40.714259] Iter: 25 | Reward: 0.96249 | Complexity: 18 | R2: 0.97957 | MDL: 23.08145 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009778 + -4e-06 * gamma + 0.010066 * log(gamma) + 0.011017 * sin(cos(gamma) / gamma) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:35:11|0:02:42.582002] Iter: 30 | Reward: 0.96249 | Complexity: 18 | R2: 0.97957 | MDL: 23.08145 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009778 + -4e-06 * gamma + 0.010066 * log(gamma) + 0.011017 * sin(cos(gamma) / gamma) | Speed: 299ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.95, MDL=33)
+[demo1|search|I|Oct23 17:35:11|0:02:42.582275] Finished
+[demo1|pde_solver|I|Oct23 17:35:14|0:02:46.208167] [pde_solver] Solve time: 3.477 s (mode=ls)
+[demo1|search|D|Oct23 17:35:14|0:02:46.374915] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:35:14|0:02:46.375749] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:35:14|0:02:46.375854] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:35:14|0:02:46.375902] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:35:14|0:02:46.375951] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:35:21|0:02:53.094477] Iter: 25 | Reward: 0.96743 | Complexity: 18 | R2: 0.98479 | MDL: 22.78449 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009748 + -5e-06 * gamma + 0.010088 * log(gamma) + 0.010941 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:35:23|0:02:54.903469] Iter: 30 | Reward: 0.96743 | Complexity: 18 | R2: 0.98479 | MDL: 22.78449 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009748 + -5e-06 * gamma + 0.010088 * log(gamma) + 0.010941 * sin(cos(gamma) / gamma) | Speed: 284ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:35:23|0:02:54.903716] Finished
+[demo1|pde_solver|I|Oct23 17:35:26|0:02:58.101135] [pde_solver] Solve time: 3.051 s (mode=ls)
+[demo1|search|D|Oct23 17:35:26|0:02:58.245254] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:35:26|0:02:58.246008] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:35:26|0:02:58.246104] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:35:26|0:02:58.246154] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:35:26|0:02:58.246201] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:35:33|0:03:05.297695] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.08073 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009602 + -1.2e-05 * gamma + 0.010194 * log(gamma) + 0.010567 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:35:35|0:03:07.151067] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.08073 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009602 + -1.2e-05 * gamma + 0.010194 * log(gamma) + 0.010567 * sin(cos(gamma) / gamma) | Speed: 297ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:35:35|0:03:07.151331] Finished
+[demo1|pde_solver|I|Oct23 17:35:38|0:03:10.287807] [pde_solver] Solve time: 2.981 s (mode=ls)
+[demo1|search|D|Oct23 17:35:39|0:03:10.428502] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:35:39|0:03:10.429243] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:35:39|0:03:10.429344] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:35:39|0:03:10.429387] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:35:39|0:03:10.429434] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:35:46|0:03:17.451043] Iter: 25 | Reward: 0.97886 | Complexity: 18 | R2: 0.99663 | MDL: 22.19462 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009614 + -1.2e-05 * gamma + 0.010186 * log(gamma) + 0.010598 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:35:47|0:03:19.253318] Iter: 30 | Reward: 0.97886 | Complexity: 18 | R2: 0.99663 | MDL: 22.19462 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009614 + -1.2e-05 * gamma + 0.010186 * log(gamma) + 0.010598 * sin(cos(gamma) / gamma) | Speed: 294ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:35:47|0:03:19.253586] Finished
+[demo1|pde_solver|I|Oct23 17:35:50|0:03:22.364754] [pde_solver] Solve time: 2.977 s (mode=ls)
+[demo1|search|D|Oct23 17:35:51|0:03:22.496416] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:35:51|0:03:22.497187] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:35:51|0:03:22.497285] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:35:51|0:03:22.497328] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:35:51|0:03:22.497376] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:35:58|0:03:29.651803] Iter: 25 | Reward: 0.95956 | Complexity: 18 | R2: 0.97646 | MDL: 23.22663 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009793 + -3e-06 * gamma + 0.010055 * log(gamma) + 0.011058 * sin(cos(gamma) / gamma) | Speed: 286ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:36:00|0:03:31.511601] Iter: 30 | Reward: 0.95956 | Complexity: 18 | R2: 0.97646 | MDL: 23.22663 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009793 + -3e-06 * gamma + 0.010055 * log(gamma) + 0.011058 * sin(cos(gamma) / gamma) | Speed: 300ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:36:00|0:03:31.511871] Finished
+[demo1|pde_solver|I|Oct23 17:36:03|0:03:34.683638] [pde_solver] Solve time: 3.028 s (mode=ls)
+[demo1|search|D|Oct23 17:36:03|0:03:34.818994] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:36:03|0:03:34.819782] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:36:03|0:03:34.819880] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:36:03|0:03:34.819924] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:36:03|0:03:34.819973] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:36:10|0:03:41.808304] Iter: 25 | Reward: 0.95847 | Complexity: 18 | R2: 0.97529 | MDL: 23.42662 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009799 + -3e-06 * gamma + 0.010051 * log(gamma) + 0.011072 * sin(cos(gamma) / gamma) | Speed: 280ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:36:12|0:03:43.653248] Iter: 30 | Reward: 0.95847 | Complexity: 18 | R2: 0.97529 | MDL: 23.42662 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009799 + -3e-06 * gamma + 0.010051 * log(gamma) + 0.011072 * sin(cos(gamma) / gamma) | Speed: 294ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:36:12|0:03:43.653554] Finished
+[demo1|pde_solver|I|Oct23 17:36:15|0:03:46.823944] [pde_solver] Solve time: 3.018 s (mode=ls)
+[demo1|search|D|Oct23 17:36:15|0:03:46.960931] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:36:15|0:03:46.961685] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:36:15|0:03:46.961789] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:36:15|0:03:46.961833] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:36:15|0:03:46.961887] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:36:22|0:03:53.966062] Iter: 25 | Reward: 0.96266 | Complexity: 18 | R2: 0.97975 | MDL: 22.97672 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009777 + -4e-06 * gamma + 0.010067 * log(gamma) + 0.011015 * sin(cos(gamma) / gamma) | Speed: 280ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:36:24|0:03:55.827621] Iter: 30 | Reward: 0.96266 | Complexity: 18 | R2: 0.97975 | MDL: 22.97672 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009777 + -4e-06 * gamma + 0.010067 * log(gamma) + 0.011015 * sin(cos(gamma) / gamma) | Speed: 296ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.95, MDL=33)
+[demo1|search|I|Oct23 17:36:24|0:03:55.827890] Finished
+[demo1|pde_solver|I|Oct23 17:36:27|0:03:59.001205] [pde_solver] Solve time: 3.030 s (mode=ls)
+[demo1|search|D|Oct23 17:36:27|0:03:59.155601] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:36:27|0:03:59.156354] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:36:27|0:03:59.156458] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:36:27|0:03:59.156499] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:36:27|0:03:59.156544] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:36:34|0:04:06.192954] Iter: 25 | Reward: 0.95366 | Complexity: 18 | R2: 0.97012 | MDL: 23.82219 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009822 + -2e-06 * gamma + 0.010034 * log(gamma) + 0.011131 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:36:36|0:04:07.814105] Iter: 30 | Reward: 0.95366 | Complexity: 18 | R2: 0.97012 | MDL: 23.82219 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009822 + -2e-06 * gamma + 0.010034 * log(gamma) + 0.011131 * sin(cos(gamma) / gamma) | Speed: 289ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:36:36|0:04:07.814379] Finished
+[demo1|pde_solver|I|Oct23 17:36:39|0:04:11.393239] [pde_solver] Solve time: 3.442 s (mode=ls)
+[demo1|search|D|Oct23 17:36:40|0:04:11.501371] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:36:40|0:04:11.502122] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:36:40|0:04:11.502225] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:36:40|0:04:11.502269] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:36:40|0:04:11.502316] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:36:46|0:04:18.155295] Iter: 25 | Reward: 0.93598 | Complexity: 18 | R2: 0.95067 | MDL: 24.35921 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009895 + 2e-06 * gamma + 0.009981 * log(gamma) + 0.011318 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.92, MDL=33)
+[demo1|mcts|I|Oct23 17:36:48|0:04:19.965372] Iter: 30 | Reward: 0.93598 | Complexity: 18 | R2: 0.95067 | MDL: 24.35921 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009895 + 2e-06 * gamma + 0.009981 * log(gamma) + 0.011318 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.92, MDL=34)
+[demo1|search|I|Oct23 17:36:48|0:04:19.965629] Finished
+[demo1|pde_solver|I|Oct23 17:36:51|0:04:23.090345] [pde_solver] Solve time: 2.986 s (mode=ls)
+[demo1|search|D|Oct23 17:36:51|0:04:23.226625] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:36:51|0:04:23.227410] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:36:51|0:04:23.227510] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:36:51|0:04:23.227553] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:36:51|0:04:23.227601] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:36:58|0:04:30.046781] Iter: 25 | Reward: 0.97376 | Complexity: 18 | R2: 0.99138 | MDL: 22.28635 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009699 + -8e-06 * gamma + 0.010124 * log(gamma) + 0.010816 * sin(cos(gamma) / gamma) | Speed: 273ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:37:00|0:04:31.842986] Iter: 30 | Reward: 0.97376 | Complexity: 18 | R2: 0.99138 | MDL: 22.28635 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009699 + -8e-06 * gamma + 0.010124 * log(gamma) + 0.010816 * sin(cos(gamma) / gamma) | Speed: 287ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:37:00|0:04:31.843250] Finished
+[demo1|pde_solver|I|Oct23 17:37:03|0:04:35.261520] [pde_solver] Solve time: 3.268 s (mode=ls)
+[demo1|search|D|Oct23 17:37:03|0:04:35.394010] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:37:03|0:04:35.394753] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:37:03|0:04:35.394849] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:37:03|0:04:35.394891] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:37:03|0:04:35.394936] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:37:10|0:04:42.042078] Iter: 25 | Reward: 0.97880 | Complexity: 18 | R2: 0.99657 | MDL: 22.28526 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009618 + -1.2e-05 * gamma + 0.010183 * log(gamma) + 0.010608 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:37:12|0:04:43.858861] Iter: 30 | Reward: 0.97880 | Complexity: 18 | R2: 0.99657 | MDL: 22.28526 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009618 + -1.2e-05 * gamma + 0.010183 * log(gamma) + 0.010608 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:37:12|0:04:43.859118] Finished
+[demo1|pde_solver|I|Oct23 17:37:15|0:04:47.052211] [pde_solver] Solve time: 3.039 s (mode=ls)
+[demo1|search|D|Oct23 17:37:15|0:04:47.207552] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:37:15|0:04:47.208289] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:37:15|0:04:47.208394] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:37:15|0:04:47.208439] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:37:15|0:04:47.208488] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:37:22|0:04:54.290997] Iter: 25 | Reward: 0.93459 | Complexity: 18 | R2: 0.94911 | MDL: 24.50489 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=25) | Best equation: 0.0099 + 2e-06 * gamma + 0.009977 * log(gamma) + 0.011331 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.92, MDL=33)
+[demo1|mcts|I|Oct23 17:37:24|0:04:55.907340] Iter: 30 | Reward: 0.93459 | Complexity: 18 | R2: 0.94911 | MDL: 24.50489 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=25) | Best equation: 0.0099 + 2e-06 * gamma + 0.009977 * log(gamma) + 0.011331 * sin(cos(gamma) / gamma) | Speed: 290ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.92, MDL=34)
+[demo1|search|I|Oct23 17:37:24|0:04:55.907593] Finished
+[demo1|pde_solver|I|Oct23 17:37:28|0:04:59.429277] [pde_solver] Solve time: 3.388 s (mode=ls)
+[demo1|search|D|Oct23 17:37:28|0:04:59.536751] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:37:28|0:04:59.537525] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:37:28|0:04:59.537629] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:37:28|0:04:59.537676] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:37:28|0:04:59.537730] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:37:34|0:05:06.304196] Iter: 25 | Reward: 0.93414 | Complexity: 18 | R2: 0.94860 | MDL: 24.40116 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009902 + 2e-06 * gamma + 0.009976 * log(gamma) + 0.011336 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.92, MDL=33)
+[demo1|mcts|I|Oct23 17:37:36|0:05:08.156692] Iter: 30 | Reward: 0.93414 | Complexity: 18 | R2: 0.94860 | MDL: 24.40116 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009902 + 2e-06 * gamma + 0.009976 * log(gamma) + 0.011336 * sin(cos(gamma) / gamma) | Speed: 287ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.92, MDL=34)
+[demo1|search|I|Oct23 17:37:36|0:05:08.156957] Finished
+[demo1|pde_solver|I|Oct23 17:37:39|0:05:11.400329] [pde_solver] Solve time: 3.100 s (mode=ls)
+[demo1|search|D|Oct23 17:37:40|0:05:11.524371] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:37:40|0:05:11.525212] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:37:40|0:05:11.525321] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:37:40|0:05:11.525365] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:37:40|0:05:11.525414] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:37:47|0:05:18.591975] Iter: 25 | Reward: 0.96230 | Complexity: 18 | R2: 0.97937 | MDL: 23.07623 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009779 + -4e-06 * gamma + 0.010066 * log(gamma) + 0.01102 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:37:49|0:05:20.430393] Iter: 30 | Reward: 0.96230 | Complexity: 18 | R2: 0.97937 | MDL: 23.07623 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009779 + -4e-06 * gamma + 0.010066 * log(gamma) + 0.01102 * sin(cos(gamma) / gamma) | Speed: 297ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.95, MDL=33)
+[demo1|search|I|Oct23 17:37:49|0:05:20.430647] Finished
+[demo1|pde_solver|I|Oct23 17:37:52|0:05:23.589179] [pde_solver] Solve time: 2.999 s (mode=ls)
+[demo1|search|D|Oct23 17:37:52|0:05:23.724445] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:37:52|0:05:23.725188] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:37:52|0:05:23.725289] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:37:52|0:05:23.725332] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:37:52|0:05:23.725380] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:37:59|0:05:30.737025] Iter: 25 | Reward: 0.97256 | Complexity: 18 | R2: 0.99013 | MDL: 22.51082 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.00971 + -7e-06 * gamma + 0.010116 * log(gamma) + 0.010844 * sin(cos(gamma) / gamma) | Speed: 280ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:38:00|0:05:32.335993] Iter: 30 | Reward: 0.97256 | Complexity: 18 | R2: 0.99013 | MDL: 22.51082 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.00971 + -7e-06 * gamma + 0.010116 * log(gamma) + 0.010844 * sin(cos(gamma) / gamma) | Speed: 287ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:38:00|0:05:32.336251] Finished
+[demo1|pde_solver|I|Oct23 17:38:04|0:05:35.902364] [pde_solver] Solve time: 3.413 s (mode=ls)
+[demo1|search|D|Oct23 17:38:04|0:05:36.032979] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:38:04|0:05:36.033733] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:38:04|0:05:36.033832] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:38:04|0:05:36.033875] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:38:04|0:05:36.033926] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:38:11|0:05:42.645442] Iter: 25 | Reward: 0.95041 | Complexity: 18 | R2: 0.96660 | MDL: 23.72530 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009837 + -1e-06 * gamma + 0.010023 * log(gamma) + 0.011169 * sin(cos(gamma) / gamma) | Speed: 264ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:38:12|0:05:44.230273] Iter: 30 | Reward: 0.95041 | Complexity: 18 | R2: 0.96660 | MDL: 23.72530 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009837 + -1e-06 * gamma + 0.010023 * log(gamma) + 0.011169 * sin(cos(gamma) / gamma) | Speed: 273ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:38:12|0:05:44.230539] Finished
+[demo1|pde_solver|I|Oct23 17:38:16|0:05:47.607046] [pde_solver] Solve time: 3.242 s (mode=ls)
+[demo1|search|D|Oct23 17:38:16|0:05:47.737647] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:38:16|0:05:47.738407] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:38:16|0:05:47.738511] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:38:16|0:05:47.738554] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:38:16|0:05:47.738602] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:38:23|0:05:54.464495] Iter: 25 | Reward: 0.95017 | Complexity: 18 | R2: 0.96634 | MDL: 23.92558 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009838 + -1e-06 * gamma + 0.010023 * log(gamma) + 0.011171 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:38:24|0:05:56.133703] Iter: 30 | Reward: 0.95017 | Complexity: 18 | R2: 0.96634 | MDL: 23.92558 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009838 + -1e-06 * gamma + 0.010023 * log(gamma) + 0.011171 * sin(cos(gamma) / gamma) | Speed: 280ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:38:24|0:05:56.133986] Finished
+[demo1|pde_solver|I|Oct23 17:38:28|0:05:59.730607] [pde_solver] Solve time: 3.451 s (mode=ls)
+[demo1|search|D|Oct23 17:38:28|0:05:59.855090] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:38:28|0:05:59.855877] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:38:28|0:05:59.855980] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:38:28|0:05:59.856023] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:38:28|0:05:59.856081] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:38:35|0:06:06.577757] Iter: 25 | Reward: 0.97886 | Complexity: 18 | R2: 0.99663 | MDL: 22.21487 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009614 + -1.2e-05 * gamma + 0.010186 * log(gamma) + 0.010598 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:38:36|0:06:08.198856] Iter: 30 | Reward: 0.97886 | Complexity: 18 | R2: 0.99663 | MDL: 22.21487 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009614 + -1.2e-05 * gamma + 0.010186 * log(gamma) + 0.010598 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:38:36|0:06:08.199124] Finished
+[demo1|pde_solver|I|Oct23 17:38:40|0:06:11.724514] [pde_solver] Solve time: 3.395 s (mode=ls)
+[demo1|search|D|Oct23 17:38:40|0:06:11.851013] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:38:40|0:06:11.851752] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:38:40|0:06:11.851854] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:38:40|0:06:11.851898] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:38:40|0:06:11.851945] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:38:47|0:06:18.498042] Iter: 25 | Reward: 0.94943 | Complexity: 18 | R2: 0.96553 | MDL: 23.81534 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009841 + -1e-06 * gamma + 0.01002 * log(gamma) + 0.01118 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:38:48|0:06:20.334329] Iter: 30 | Reward: 0.94943 | Complexity: 18 | R2: 0.96553 | MDL: 23.81534 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009841 + -1e-06 * gamma + 0.01002 * log(gamma) + 0.01118 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:38:48|0:06:20.334603] Finished
+[demo1|pde_solver|I|Oct23 17:38:52|0:06:23.481149] [pde_solver] Solve time: 3.004 s (mode=ls)
+[demo1|search|D|Oct23 17:38:52|0:06:23.613200] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:38:52|0:06:23.613925] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:38:52|0:06:23.614020] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:38:52|0:06:23.614064] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:38:52|0:06:23.614111] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:38:59|0:06:30.579274] Iter: 25 | Reward: 0.97852 | Complexity: 18 | R2: 0.99629 | MDL: 22.13625 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009629 + -1.1e-05 * gamma + 0.010175 * log(gamma) + 0.010636 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:39:00|0:06:32.420242] Iter: 30 | Reward: 0.97852 | Complexity: 18 | R2: 0.99629 | MDL: 22.13625 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009629 + -1.1e-05 * gamma + 0.010175 * log(gamma) + 0.010636 * sin(cos(gamma) / gamma) | Speed: 294ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:39:00|0:06:32.420500] Finished
+[demo1|pde_solver|I|Oct23 17:39:04|0:06:35.961499] [pde_solver] Solve time: 3.390 s (mode=ls)
+[demo1|search|D|Oct23 17:39:04|0:06:36.117723] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:39:04|0:06:36.118456] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:39:04|0:06:36.118557] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:39:04|0:06:36.118601] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:39:04|0:06:36.118649] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:39:11|0:06:42.783850] Iter: 25 | Reward: 0.97850 | Complexity: 18 | R2: 0.99627 | MDL: 22.17860 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00963 + -1.1e-05 * gamma + 0.010174 * log(gamma) + 0.010638 * sin(cos(gamma) / gamma) | Speed: 267ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:39:12|0:06:44.386624] Iter: 30 | Reward: 0.97850 | Complexity: 18 | R2: 0.99627 | MDL: 22.17860 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00963 + -1.1e-05 * gamma + 0.010174 * log(gamma) + 0.010638 * sin(cos(gamma) / gamma) | Speed: 276ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:39:12|0:06:44.386915] Finished
+[demo1|pde_solver|I|Oct23 17:39:16|0:06:47.907534] [pde_solver] Solve time: 3.385 s (mode=ls)
+[demo1|search|D|Oct23 17:39:16|0:06:48.015164] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:39:16|0:06:48.015920] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:39:16|0:06:48.016020] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:39:16|0:06:48.016064] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:39:16|0:06:48.016113] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:39:23|0:06:54.726892] Iter: 25 | Reward: 0.97892 | Complexity: 18 | R2: 0.99669 | MDL: 21.90879 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009592 + -1.3e-05 * gamma + 0.010201 * log(gamma) + 0.010542 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:39:24|0:06:56.335069] Iter: 30 | Reward: 0.97892 | Complexity: 18 | R2: 0.99669 | MDL: 21.90879 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009592 + -1.3e-05 * gamma + 0.010201 * log(gamma) + 0.010542 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:39:24|0:06:56.335348] Finished
+[demo1|pde_solver|I|Oct23 17:39:28|0:06:59.881209] [pde_solver] Solve time: 3.406 s (mode=ls)
+[demo1|search|D|Oct23 17:39:28|0:07:00.002644] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:39:28|0:07:00.003390] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:39:28|0:07:00.003491] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:39:28|0:07:00.003531] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:39:28|0:07:00.003575] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:39:35|0:07:06.627502] Iter: 25 | Reward: 0.95545 | Complexity: 18 | R2: 0.97206 | MDL: 23.53708 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009814 + -2e-06 * gamma + 0.01004 * log(gamma) + 0.01111 * sin(cos(gamma) / gamma) | Speed: 265ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:39:36|0:07:08.226511] Iter: 30 | Reward: 0.95545 | Complexity: 18 | R2: 0.97206 | MDL: 23.53708 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009814 + -2e-06 * gamma + 0.01004 * log(gamma) + 0.01111 * sin(cos(gamma) / gamma) | Speed: 274ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:39:36|0:07:08.226771] Finished
+[demo1|pde_solver|I|Oct23 17:39:40|0:07:11.858014] [pde_solver] Solve time: 3.469 s (mode=ls)
+[demo1|search|D|Oct23 17:39:40|0:07:12.001637] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:39:40|0:07:12.002622] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:39:40|0:07:12.002748] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:39:40|0:07:12.002792] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:39:40|0:07:12.002841] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:39:47|0:07:18.806556] Iter: 25 | Reward: 0.95985 | Complexity: 18 | R2: 0.97677 | MDL: 23.21416 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009792 + -3e-06 * gamma + 0.010056 * log(gamma) + 0.011054 * sin(cos(gamma) / gamma) | Speed: 272ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:39:48|0:07:20.426060] Iter: 30 | Reward: 0.95985 | Complexity: 18 | R2: 0.97677 | MDL: 23.21416 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009792 + -3e-06 * gamma + 0.010056 * log(gamma) + 0.011054 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:39:48|0:07:20.426439] Finished
+[demo1|pde_solver|I|Oct23 17:39:52|0:07:23.989132] [pde_solver] Solve time: 3.404 s (mode=ls)
+[demo1|search|D|Oct23 17:39:52|0:07:24.123389] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:39:52|0:07:24.124126] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:39:52|0:07:24.124232] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:39:52|0:07:24.124274] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:39:52|0:07:24.124317] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:39:59|0:07:30.776736] Iter: 25 | Reward: 0.97846 | Complexity: 18 | R2: 0.99623 | MDL: 22.30550 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009631 + -1.1e-05 * gamma + 0.010173 * log(gamma) + 0.010641 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:40:00|0:07:32.370107] Iter: 30 | Reward: 0.97846 | Complexity: 18 | R2: 0.99623 | MDL: 22.30550 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009631 + -1.1e-05 * gamma + 0.010173 * log(gamma) + 0.010641 * sin(cos(gamma) / gamma) | Speed: 275ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:40:00|0:07:32.370361] Finished
+[demo1|pde_solver|I|Oct23 17:40:04|0:07:35.904315] [pde_solver] Solve time: 3.395 s (mode=ls)
+[demo1|search|D|Oct23 17:40:04|0:07:36.038108] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:40:04|0:07:36.038883] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:40:04|0:07:36.038980] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:40:04|0:07:36.039023] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:40:04|0:07:36.039069] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:40:11|0:07:42.777252] Iter: 25 | Reward: 0.97859 | Complexity: 18 | R2: 0.99636 | MDL: 22.23700 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009626 + -1.1e-05 * gamma + 0.010177 * log(gamma) + 0.01063 * sin(cos(gamma) / gamma) | Speed: 270ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:40:12|0:07:44.386654] Iter: 30 | Reward: 0.97859 | Complexity: 18 | R2: 0.99636 | MDL: 22.23700 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009626 + -1.1e-05 * gamma + 0.010177 * log(gamma) + 0.01063 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:40:12|0:07:44.386943] Finished
+[demo1|pde_solver|I|Oct23 17:40:16|0:07:47.959429] [pde_solver] Solve time: 3.422 s (mode=ls)
+[demo1|search|D|Oct23 17:40:16|0:07:48.083690] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:40:16|0:07:48.084423] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:40:16|0:07:48.084519] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:40:16|0:07:48.084569] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:40:16|0:07:48.084618] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:40:23|0:07:54.736979] Iter: 25 | Reward: 0.93216 | Complexity: 18 | R2: 0.94637 | MDL: 24.47243 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009909 + 3e-06 * gamma + 0.009971 * log(gamma) + 0.011354 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.92, MDL=33)
+[demo1|mcts|I|Oct23 17:40:24|0:07:56.328455] Iter: 30 | Reward: 0.93216 | Complexity: 18 | R2: 0.94637 | MDL: 24.47243 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009909 + 3e-06 * gamma + 0.009971 * log(gamma) + 0.011354 * sin(cos(gamma) / gamma) | Speed: 275ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.92, MDL=34)
+[demo1|search|I|Oct23 17:40:24|0:07:56.328715] Finished
+[demo1|pde_solver|I|Oct23 17:40:28|0:07:59.905764] [pde_solver] Solve time: 3.443 s (mode=ls)
+[demo1|search|D|Oct23 17:40:28|0:08:00.029661] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:40:28|0:08:00.030405] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:40:28|0:08:00.030505] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:40:28|0:08:00.030549] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:40:28|0:08:00.030607] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:40:35|0:08:06.793547] Iter: 25 | Reward: 0.97887 | Complexity: 18 | R2: 0.99665 | MDL: 22.10674 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009588 + -1.3e-05 * gamma + 0.010204 * log(gamma) + 0.010532 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:40:37|0:08:08.597618] Iter: 30 | Reward: 0.97887 | Complexity: 18 | R2: 0.99665 | MDL: 22.10674 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009588 + -1.3e-05 * gamma + 0.010204 * log(gamma) + 0.010532 * sin(cos(gamma) / gamma) | Speed: 286ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:40:37|0:08:08.597875] Finished
+[demo1|pde_solver|I|Oct23 17:40:40|0:08:11.737103] [pde_solver] Solve time: 2.989 s (mode=ls)
+[demo1|search|D|Oct23 17:40:40|0:08:11.873301] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:40:40|0:08:11.874126] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:40:40|0:08:11.874244] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:40:40|0:08:11.874290] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:40:40|0:08:11.874338] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:40:47|0:08:18.811185] Iter: 25 | Reward: 0.95148 | Complexity: 18 | R2: 0.96777 | MDL: 23.87017 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009832 + -1e-06 * gamma + 0.010027 * log(gamma) + 0.011157 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:40:49|0:08:20.637011] Iter: 30 | Reward: 0.95148 | Complexity: 18 | R2: 0.96777 | MDL: 23.87017 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009832 + -1e-06 * gamma + 0.010027 * log(gamma) + 0.011157 * sin(cos(gamma) / gamma) | Speed: 292ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=34)
+[demo1|search|I|Oct23 17:40:49|0:08:20.637289] Finished
+[demo1|pde_solver|I|Oct23 17:40:52|0:08:23.774899] [pde_solver] Solve time: 2.985 s (mode=ls)
+[demo1|search|D|Oct23 17:40:52|0:08:23.936864] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:40:52|0:08:23.937613] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:40:52|0:08:23.937713] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:40:52|0:08:23.937771] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:40:52|0:08:23.937822] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:40:59|0:08:30.894010] Iter: 25 | Reward: 0.96022 | Complexity: 18 | R2: 0.97715 | MDL: 23.28687 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.00979 + -3e-06 * gamma + 0.010057 * log(gamma) + 0.011049 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:41:01|0:08:32.486615] Iter: 30 | Reward: 0.96022 | Complexity: 18 | R2: 0.97715 | MDL: 23.28687 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.00979 + -3e-06 * gamma + 0.010057 * log(gamma) + 0.011049 * sin(cos(gamma) / gamma) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:41:01|0:08:32.486873] Finished
+[demo1|pde_solver|I|Oct23 17:41:04|0:08:36.042716] [pde_solver] Solve time: 3.421 s (mode=ls)
+[demo1|search|D|Oct23 17:41:04|0:08:36.153496] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:41:04|0:08:36.154285] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:41:04|0:08:36.154386] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:41:04|0:08:36.154432] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:41:04|0:08:36.154479] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:41:11|0:08:42.910270] Iter: 25 | Reward: 0.97835 | Complexity: 18 | R2: 0.99611 | MDL: 22.12580 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009634 + -1.1e-05 * gamma + 0.010171 * log(gamma) + 0.010649 * sin(cos(gamma) / gamma) | Speed: 270ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:41:13|0:08:44.508095] Iter: 30 | Reward: 0.97835 | Complexity: 18 | R2: 0.99611 | MDL: 22.12580 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009634 + -1.1e-05 * gamma + 0.010171 * log(gamma) + 0.010649 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:41:13|0:08:44.508380] Finished
+[demo1|pde_solver|I|Oct23 17:41:16|0:08:48.097943] [pde_solver] Solve time: 3.449 s (mode=ls)
+[demo1|search|D|Oct23 17:41:16|0:08:48.218884] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:41:16|0:08:48.219635] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:41:16|0:08:48.219744] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:41:16|0:08:48.219790] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:41:16|0:08:48.219837] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:41:23|0:08:54.926802] Iter: 25 | Reward: 0.97098 | Complexity: 18 | R2: 0.98850 | MDL: 22.40999 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009723 + -6e-06 * gamma + 0.010106 * log(gamma) + 0.010877 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:41:25|0:08:56.730341] Iter: 30 | Reward: 0.97098 | Complexity: 18 | R2: 0.98850 | MDL: 22.40999 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009723 + -6e-06 * gamma + 0.010106 * log(gamma) + 0.010877 * sin(cos(gamma) / gamma) | Speed: 284ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:41:25|0:08:56.730602] Finished
+[demo1|pde_solver|I|Oct23 17:41:28|0:08:59.863852] [pde_solver] Solve time: 2.969 s (mode=ls)
+[demo1|search|D|Oct23 17:41:28|0:09:00.001955] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:41:28|0:09:00.002689] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:41:28|0:09:00.002792] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:41:28|0:09:00.002835] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:41:28|0:09:00.002884] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:41:35|0:09:06.965172] Iter: 25 | Reward: 0.97889 | Complexity: 18 | R2: 0.99667 | MDL: 22.18040 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00959 + -1.3e-05 * gamma + 0.010203 * log(gamma) + 0.010537 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:41:37|0:09:08.775779] Iter: 30 | Reward: 0.97889 | Complexity: 18 | R2: 0.99667 | MDL: 22.18040 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00959 + -1.3e-05 * gamma + 0.010203 * log(gamma) + 0.010537 * sin(cos(gamma) / gamma) | Speed: 292ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:41:37|0:09:08.776048] Finished
+[demo1|pde_solver|I|Oct23 17:41:40|0:09:12.272229] [pde_solver] Solve time: 3.337 s (mode=ls)
+[demo1|search|D|Oct23 17:41:40|0:09:12.404762] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:41:40|0:09:12.405505] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:41:40|0:09:12.405606] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:41:40|0:09:12.405648] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:41:40|0:09:12.405693] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:41:47|0:09:19.114244] Iter: 25 | Reward: 0.96332 | Complexity: 18 | R2: 0.98045 | MDL: 22.85249 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009773 + -4e-06 * gamma + 0.01007 * log(gamma) + 0.011005 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:41:49|0:09:20.935670] Iter: 30 | Reward: 0.96332 | Complexity: 18 | R2: 0.98045 | MDL: 22.85249 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009773 + -4e-06 * gamma + 0.01007 * log(gamma) + 0.011005 * sin(cos(gamma) / gamma) | Speed: 284ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.95, MDL=33)
+[demo1|search|I|Oct23 17:41:49|0:09:20.935939] Finished
+[demo1|pde_solver|I|Oct23 17:41:52|0:09:24.101097] [pde_solver] Solve time: 3.027 s (mode=ls)
+[demo1|search|D|Oct23 17:41:52|0:09:24.232877] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:41:52|0:09:24.233671] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:41:52|0:09:24.233776] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:41:52|0:09:24.233818] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:41:52|0:09:24.233867] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:41:59|0:09:31.181176] Iter: 25 | Reward: 0.97833 | Complexity: 18 | R2: 0.99609 | MDL: 22.14249 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009635 + -1.1e-05 * gamma + 0.010171 * log(gamma) + 0.010651 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:42:01|0:09:33.014076] Iter: 30 | Reward: 0.97833 | Complexity: 18 | R2: 0.99609 | MDL: 22.14249 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009635 + -1.1e-05 * gamma + 0.010171 * log(gamma) + 0.010651 * sin(cos(gamma) / gamma) | Speed: 293ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:42:01|0:09:33.014361] Finished
+[demo1|pde_solver|I|Oct23 17:42:04|0:09:36.166651] [pde_solver] Solve time: 2.999 s (mode=ls)
+[demo1|search|D|Oct23 17:42:04|0:09:36.289534] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:42:04|0:09:36.290280] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:42:04|0:09:36.290390] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:42:04|0:09:36.290434] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:42:04|0:09:36.290483] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:42:11|0:09:43.282574] Iter: 25 | Reward: 0.97704 | Complexity: 18 | R2: 0.99477 | MDL: 22.23749 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00966 + -9e-06 * gamma + 0.010152 * log(gamma) + 0.010716 * sin(cos(gamma) / gamma) | Speed: 280ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:42:13|0:09:45.103502] Iter: 30 | Reward: 0.97704 | Complexity: 18 | R2: 0.99477 | MDL: 22.23749 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00966 + -9e-06 * gamma + 0.010152 * log(gamma) + 0.010716 * sin(cos(gamma) / gamma) | Speed: 294ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:42:13|0:09:45.103757] Finished
+[demo1|pde_solver|I|Oct23 17:42:17|0:09:48.657599] [pde_solver] Solve time: 3.416 s (mode=ls)
+[demo1|search|D|Oct23 17:42:17|0:09:48.782002] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:42:17|0:09:48.782746] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:42:17|0:09:48.782846] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:42:17|0:09:48.782887] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:42:17|0:09:48.782931] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:42:24|0:09:55.507979] Iter: 25 | Reward: 0.97820 | Complexity: 18 | R2: 0.99596 | MDL: 22.20867 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009638 + -1.1e-05 * gamma + 0.010168 * log(gamma) + 0.010659 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:42:25|0:09:57.133054] Iter: 30 | Reward: 0.97820 | Complexity: 18 | R2: 0.99596 | MDL: 22.20867 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009638 + -1.1e-05 * gamma + 0.010168 * log(gamma) + 0.010659 * sin(cos(gamma) / gamma) | Speed: 278ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:42:25|0:09:57.133322] Finished
+[demo1|pde_solver|I|Oct23 17:42:29|0:10:00.695858] [pde_solver] Solve time: 3.408 s (mode=ls)
+[demo1|search|D|Oct23 17:42:29|0:10:00.839163] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:42:29|0:10:00.839896] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:42:29|0:10:00.839997] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:42:29|0:10:00.840039] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:42:29|0:10:00.840086] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:42:36|0:10:07.632077] Iter: 25 | Reward: 0.97859 | Complexity: 18 | R2: 0.99636 | MDL: 22.23755 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009627 + -1.1e-05 * gamma + 0.010176 * log(gamma) + 0.01063 * sin(cos(gamma) / gamma) | Speed: 272ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:42:37|0:10:09.247078] Iter: 30 | Reward: 0.97859 | Complexity: 18 | R2: 0.99636 | MDL: 22.23755 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009627 + -1.1e-05 * gamma + 0.010176 * log(gamma) + 0.01063 * sin(cos(gamma) / gamma) | Speed: 280ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:42:37|0:10:09.247359] Finished
+[demo1|pde_solver|I|Oct23 17:42:41|0:10:13.166054] [pde_solver] Solve time: 3.764 s (mode=ls)
+[demo1|search|D|Oct23 17:42:41|0:10:13.355603] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:42:41|0:10:13.356539] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:42:41|0:10:13.356650] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:42:41|0:10:13.356699] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:42:41|0:10:13.356755] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:42:48|0:10:20.144557] Iter: 25 | Reward: 0.97889 | Complexity: 18 | R2: 0.99667 | MDL: 22.06776 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009611 + -1.2e-05 * gamma + 0.010188 * log(gamma) + 0.010591 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:42:50|0:10:21.741402] Iter: 30 | Reward: 0.97889 | Complexity: 18 | R2: 0.99667 | MDL: 22.06776 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009611 + -1.2e-05 * gamma + 0.010188 * log(gamma) + 0.010591 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:42:50|0:10:21.741690] Finished
+[demo1|pde_solver|I|Oct23 17:42:53|0:10:25.324683] [pde_solver] Solve time: 3.444 s (mode=ls)
+[demo1|search|D|Oct23 17:42:54|0:10:25.443690] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:42:54|0:10:25.444491] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:42:54|0:10:25.444592] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:42:54|0:10:25.444634] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:42:54|0:10:25.444682] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:43:00|0:10:32.144372] Iter: 25 | Reward: 0.94980 | Complexity: 18 | R2: 0.96594 | MDL: 23.76578 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009839 + -1e-06 * gamma + 0.010021 * log(gamma) + 0.011176 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:43:02|0:10:33.755937] Iter: 30 | Reward: 0.94980 | Complexity: 18 | R2: 0.96594 | MDL: 23.76578 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009839 + -1e-06 * gamma + 0.010021 * log(gamma) + 0.011176 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:43:02|0:10:33.756265] Finished
+[demo1|pde_solver|I|Oct23 17:43:05|0:10:37.171380] [pde_solver] Solve time: 3.267 s (mode=ls)
+[demo1|search|D|Oct23 17:43:05|0:10:37.295506] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:43:05|0:10:37.296249] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:43:05|0:10:37.296349] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:43:05|0:10:37.296391] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:43:05|0:10:37.296438] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:43:12|0:10:44.071666] Iter: 25 | Reward: 0.97847 | Complexity: 18 | R2: 0.99624 | MDL: 22.13642 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00963 + -1.1e-05 * gamma + 0.010174 * log(gamma) + 0.01064 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:43:14|0:10:45.654473] Iter: 30 | Reward: 0.97847 | Complexity: 18 | R2: 0.99624 | MDL: 22.13642 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00963 + -1.1e-05 * gamma + 0.010174 * log(gamma) + 0.01064 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:43:14|0:10:45.654756] Finished
+[demo1|pde_solver|I|Oct23 17:43:17|0:10:49.086758] [pde_solver] Solve time: 3.267 s (mode=ls)
+[demo1|search|D|Oct23 17:43:17|0:10:49.223881] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:43:17|0:10:49.224634] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:43:17|0:10:49.224738] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:43:17|0:10:49.224780] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:43:17|0:10:49.224832] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:43:24|0:10:55.792067] Iter: 25 | Reward: 0.93294 | Complexity: 18 | R2: 0.94725 | MDL: 24.37418 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009906 + 3e-06 * gamma + 0.009973 * log(gamma) + 0.011347 * sin(cos(gamma) / gamma) | Speed: 263ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.92, MDL=33)
+[demo1|mcts|I|Oct23 17:43:26|0:10:57.584551] Iter: 30 | Reward: 0.93294 | Complexity: 18 | R2: 0.94725 | MDL: 24.37418 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009906 + 3e-06 * gamma + 0.009973 * log(gamma) + 0.011347 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.92, MDL=34)
+[demo1|search|I|Oct23 17:43:26|0:10:57.584820] Finished
+[demo1|pde_solver|I|Oct23 17:43:29|0:11:01.042466] [pde_solver] Solve time: 3.303 s (mode=ls)
+[demo1|search|D|Oct23 17:43:29|0:11:01.176470] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:43:29|0:11:01.177210] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:43:29|0:11:01.177312] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:43:29|0:11:01.177354] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:43:29|0:11:01.177397] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:43:36|0:11:07.882082] Iter: 25 | Reward: 0.97885 | Complexity: 18 | R2: 0.99663 | MDL: 22.03748 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009587 + -1.3e-05 * gamma + 0.010205 * log(gamma) + 0.010529 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:43:38|0:11:09.675636] Iter: 30 | Reward: 0.97885 | Complexity: 18 | R2: 0.99663 | MDL: 22.03748 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009587 + -1.3e-05 * gamma + 0.010205 * log(gamma) + 0.010529 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:43:38|0:11:09.675889] Finished
+[demo1|pde_solver|I|Oct23 17:43:41|0:11:12.825232] [pde_solver] Solve time: 3.010 s (mode=ls)
+[demo1|search|D|Oct23 17:43:41|0:11:12.962694] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:43:41|0:11:12.963467] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:43:41|0:11:12.963569] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:43:41|0:11:12.963612] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:43:41|0:11:12.963660] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:43:48|0:11:19.859352] Iter: 25 | Reward: 0.96954 | Complexity: 18 | R2: 0.98699 | MDL: 22.70884 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009733 + -6e-06 * gamma + 0.010099 * log(gamma) + 0.010904 * sin(cos(gamma) / gamma) | Speed: 276ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:43:50|0:11:21.670117] Iter: 30 | Reward: 0.96954 | Complexity: 18 | R2: 0.98699 | MDL: 22.70884 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009733 + -6e-06 * gamma + 0.010099 * log(gamma) + 0.010904 * sin(cos(gamma) / gamma) | Speed: 290ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:43:50|0:11:21.670411] Finished
+[demo1|pde_solver|I|Oct23 17:43:53|0:11:25.155145] [pde_solver] Solve time: 3.338 s (mode=ls)
+[demo1|search|D|Oct23 17:43:53|0:11:25.280307] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:43:53|0:11:25.281106] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:43:53|0:11:25.281215] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:43:53|0:11:25.281258] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:43:53|0:11:25.281305] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:44:00|0:11:31.917504] Iter: 25 | Reward: 0.94123 | Complexity: 18 | R2: 0.95652 | MDL: 24.10591 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009875 + 1e-06 * gamma + 0.009996 * log(gamma) + 0.011266 * sin(cos(gamma) / gamma) | Speed: 265ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.92, MDL=33)
+[demo1|mcts|I|Oct23 17:44:02|0:11:33.714391] Iter: 30 | Reward: 0.94123 | Complexity: 18 | R2: 0.95652 | MDL: 24.10591 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009875 + 1e-06 * gamma + 0.009996 * log(gamma) + 0.011266 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:44:02|0:11:33.714664] Finished
+[demo1|pde_solver|I|Oct23 17:44:05|0:11:36.914562] [pde_solver] Solve time: 3.056 s (mode=ls)
+[demo1|search|D|Oct23 17:44:05|0:11:37.038660] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:44:05|0:11:37.039461] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:44:05|0:11:37.039573] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:44:05|0:11:37.039615] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:44:05|0:11:37.039661] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:44:12|0:11:44.122202] Iter: 25 | Reward: 0.95246 | Complexity: 18 | R2: 0.96882 | MDL: 23.79649 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009828 + -1e-06 * gamma + 0.01003 * log(gamma) + 0.011145 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=33)
+[demo1|mcts|I|Oct23 17:44:14|0:11:45.735954] Iter: 30 | Reward: 0.95246 | Complexity: 18 | R2: 0.96882 | MDL: 23.79649 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009828 + -1e-06 * gamma + 0.01003 * log(gamma) + 0.011145 * sin(cos(gamma) / gamma) | Speed: 290ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=34)
+[demo1|search|I|Oct23 17:44:14|0:11:45.736250] Finished
+[demo1|pde_solver|I|Oct23 17:44:17|0:11:49.157860] [pde_solver] Solve time: 3.270 s (mode=ls)
+[demo1|search|D|Oct23 17:44:17|0:11:49.301219] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:44:17|0:11:49.301959] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:44:17|0:11:49.302055] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:44:17|0:11:49.302097] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:44:17|0:11:49.302146] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:44:24|0:11:56.081036] Iter: 25 | Reward: 0.97571 | Complexity: 18 | R2: 0.99340 | MDL: 22.32236 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009678 + -9e-06 * gamma + 0.010139 * log(gamma) + 0.010762 * sin(cos(gamma) / gamma) | Speed: 271ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:44:26|0:11:57.661908] Iter: 30 | Reward: 0.97571 | Complexity: 18 | R2: 0.99340 | MDL: 22.32236 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009678 + -9e-06 * gamma + 0.010139 * log(gamma) + 0.010762 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:44:26|0:11:57.662170] Finished
+[demo1|pde_solver|I|Oct23 17:44:29|0:12:01.120902] [pde_solver] Solve time: 3.314 s (mode=ls)
+[demo1|search|D|Oct23 17:44:29|0:12:01.278735] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:44:29|0:12:01.279489] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:44:29|0:12:01.279590] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:44:29|0:12:01.279632] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:44:29|0:12:01.279678] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:44:36|0:12:07.966404] Iter: 25 | Reward: 0.95937 | Complexity: 18 | R2: 0.97625 | MDL: 23.13759 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009794 + -3e-06 * gamma + 0.010054 * log(gamma) + 0.01106 * sin(cos(gamma) / gamma) | Speed: 267ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:44:38|0:12:09.768455] Iter: 30 | Reward: 0.95937 | Complexity: 18 | R2: 0.97625 | MDL: 23.13759 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009794 + -3e-06 * gamma + 0.010054 * log(gamma) + 0.01106 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:44:38|0:12:09.768716] Finished
+[demo1|pde_solver|I|Oct23 17:44:41|0:12:13.267637] [pde_solver] Solve time: 3.360 s (mode=ls)
+[demo1|search|D|Oct23 17:44:41|0:12:13.376902] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:44:41|0:12:13.377703] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:44:41|0:12:13.377804] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:44:41|0:12:13.377845] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:44:41|0:12:13.377889] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:44:48|0:12:20.061633] Iter: 25 | Reward: 0.94976 | Complexity: 14 | R2: 0.96175 | MDL: 24.06925 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009856 + 0.01001 * log(gamma) + 0.011217 * sin(cos(gamma) / gamma) | Speed: 267ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:44:50|0:12:21.660742] Iter: 30 | Reward: 0.94976 | Complexity: 14 | R2: 0.96175 | MDL: 24.06925 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009856 + 0.01001 * log(gamma) + 0.011217 * sin(cos(gamma) / gamma) | Speed: 276ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:44:50|0:12:21.661100] Finished
+[demo1|pde_solver|I|Oct23 17:44:53|0:12:25.217392] [pde_solver] Solve time: 3.414 s (mode=ls)
+[demo1|search|D|Oct23 17:44:53|0:12:25.342551] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:44:53|0:12:25.343296] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:44:53|0:12:25.343395] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:44:53|0:12:25.343438] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:44:53|0:12:25.343488] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:45:00|0:12:32.094060] Iter: 25 | Reward: 0.97341 | Complexity: 18 | R2: 0.99102 | MDL: 22.34026 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009702 + -7e-06 * gamma + 0.010121 * log(gamma) + 0.010824 * sin(cos(gamma) / gamma) | Speed: 270ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:45:02|0:12:33.699968] Iter: 30 | Reward: 0.97341 | Complexity: 18 | R2: 0.99102 | MDL: 22.34026 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009702 + -7e-06 * gamma + 0.010121 * log(gamma) + 0.010824 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:45:02|0:12:33.700245] Finished
+[demo1|pde_solver|I|Oct23 17:45:05|0:12:37.286200] [pde_solver] Solve time: 3.415 s (mode=ls)
+[demo1|search|D|Oct23 17:45:05|0:12:37.423535] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:45:05|0:12:37.424275] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:45:05|0:12:37.424379] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:45:05|0:12:37.424422] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:45:05|0:12:37.424470] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:45:12|0:12:44.318110] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.19267 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.0096 + -1.2e-05 * gamma + 0.010196 * log(gamma) + 0.010562 * sin(cos(gamma) / gamma) | Speed: 276ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:45:14|0:12:45.908201] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.19267 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.0096 + -1.2e-05 * gamma + 0.010196 * log(gamma) + 0.010562 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:45:14|0:12:45.908651] Finished
+[demo1|pde_solver|I|Oct23 17:45:17|0:12:49.377730] [pde_solver] Solve time: 3.312 s (mode=ls)
+[demo1|search|D|Oct23 17:45:18|0:12:49.511899] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:45:18|0:12:49.512639] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:45:18|0:12:49.512738] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:45:18|0:12:49.512797] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:45:18|0:12:49.512842] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:45:24|0:12:56.339476] Iter: 25 | Reward: 0.97539 | Complexity: 18 | R2: 0.99307 | MDL: 22.35490 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009682 + -8e-06 * gamma + 0.010136 * log(gamma) + 0.010772 * sin(cos(gamma) / gamma) | Speed: 273ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:45:26|0:12:57.966221] Iter: 30 | Reward: 0.97539 | Complexity: 18 | R2: 0.99307 | MDL: 22.35490 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009682 + -8e-06 * gamma + 0.010136 * log(gamma) + 0.010772 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:45:26|0:12:57.966483] Finished
+[demo1|pde_solver|I|Oct23 17:45:29|0:13:01.393216] [pde_solver] Solve time: 3.288 s (mode=ls)
+[demo1|search|D|Oct23 17:45:30|0:13:01.531308] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:45:30|0:13:01.532063] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:45:30|0:13:01.532164] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:45:30|0:13:01.532208] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:45:30|0:13:01.532256] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:45:36|0:13:08.417974] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05473 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009598 + -1.3e-05 * gamma + 0.010197 * log(gamma) + 0.010557 * sin(cos(gamma) / gamma) | Speed: 275ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:45:38|0:13:10.021005] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05473 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009598 + -1.3e-05 * gamma + 0.010197 * log(gamma) + 0.010557 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:45:38|0:13:10.021301] Finished
+[demo1|pde_solver|I|Oct23 17:45:42|0:13:13.558152] [pde_solver] Solve time: 3.383 s (mode=ls)
+[demo1|search|D|Oct23 17:45:42|0:13:13.681936] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:45:42|0:13:13.682734] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:45:42|0:13:13.682837] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:45:42|0:13:13.682880] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:45:42|0:13:13.682928] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:45:49|0:13:20.600503] Iter: 25 | Reward: 0.96587 | Complexity: 18 | R2: 0.98314 | MDL: 22.92127 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009758 + -5e-06 * gamma + 0.010081 * log(gamma) + 0.010967 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:45:50|0:13:22.204629] Iter: 30 | Reward: 0.96587 | Complexity: 18 | R2: 0.98314 | MDL: 22.92127 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009758 + -5e-06 * gamma + 0.010081 * log(gamma) + 0.010967 * sin(cos(gamma) / gamma) | Speed: 284ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:45:50|0:13:22.204907] Finished
+[demo1|pde_solver|I|Oct23 17:45:54|0:13:25.700098] [pde_solver] Solve time: 3.359 s (mode=ls)
+[demo1|search|D|Oct23 17:45:54|0:13:25.821727] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:45:54|0:13:25.822473] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:45:54|0:13:25.822570] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:45:54|0:13:25.822612] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:45:54|0:13:25.822658] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:46:01|0:13:32.575686] Iter: 25 | Reward: 0.97591 | Complexity: 18 | R2: 0.99360 | MDL: 22.38140 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009676 + -9e-06 * gamma + 0.010141 * log(gamma) + 0.010756 * sin(cos(gamma) / gamma) | Speed: 270ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:46:02|0:13:34.404874] Iter: 30 | Reward: 0.97591 | Complexity: 18 | R2: 0.99360 | MDL: 22.38140 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009676 + -9e-06 * gamma + 0.010141 * log(gamma) + 0.010756 * sin(cos(gamma) / gamma) | Speed: 286ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:46:02|0:13:34.405145] Finished
+[demo1|pde_solver|I|Oct23 17:46:06|0:13:37.538518] [pde_solver] Solve time: 2.982 s (mode=ls)
+[demo1|search|D|Oct23 17:46:06|0:13:37.679609] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:46:06|0:13:37.680357] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:46:06|0:13:37.680461] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:46:06|0:13:37.680505] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:46:06|0:13:37.680553] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:46:13|0:13:44.699301] Iter: 25 | Reward: 0.95422 | Complexity: 18 | R2: 0.97073 | MDL: 23.66887 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009819 + -2e-06 * gamma + 0.010036 * log(gamma) + 0.011125 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:46:14|0:13:46.320506] Iter: 30 | Reward: 0.95422 | Complexity: 18 | R2: 0.97073 | MDL: 23.66887 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009819 + -2e-06 * gamma + 0.010036 * log(gamma) + 0.011125 * sin(cos(gamma) / gamma) | Speed: 288ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=34)
+[demo1|search|I|Oct23 17:46:14|0:13:46.320772] Finished
+[demo1|pde_solver|I|Oct23 17:46:18|0:13:49.881860] [pde_solver] Solve time: 3.413 s (mode=ls)
+[demo1|search|D|Oct23 17:46:18|0:13:50.037809] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:46:18|0:13:50.038543] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:46:18|0:13:50.038646] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:46:18|0:13:50.038689] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:46:18|0:13:50.038741] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:46:25|0:13:56.684734] Iter: 25 | Reward: 0.94336 | Complexity: 18 | R2: 0.95888 | MDL: 24.11869 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009866 + 1e-06 * gamma + 0.010002 * log(gamma) + 0.011245 * sin(cos(gamma) / gamma) | Speed: 266ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:46:26|0:13:58.278981] Iter: 30 | Reward: 0.94336 | Complexity: 18 | R2: 0.95888 | MDL: 24.11869 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009866 + 1e-06 * gamma + 0.010002 * log(gamma) + 0.011245 * sin(cos(gamma) / gamma) | Speed: 275ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:46:26|0:13:58.279288] Finished
+[demo1|pde_solver|I|Oct23 17:46:30|0:14:01.773348] [pde_solver] Solve time: 3.351 s (mode=ls)
+[demo1|search|D|Oct23 17:46:30|0:14:01.881781] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:46:30|0:14:01.882564] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:46:30|0:14:01.882667] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:46:30|0:14:01.882710] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:46:30|0:14:01.882756] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:46:37|0:14:08.751141] Iter: 25 | Reward: 0.96930 | Complexity: 18 | R2: 0.98674 | MDL: 22.75517 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009735 + -6e-06 * gamma + 0.010097 * log(gamma) + 0.010909 * sin(cos(gamma) / gamma) | Speed: 275ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:46:38|0:14:10.334322] Iter: 30 | Reward: 0.96930 | Complexity: 18 | R2: 0.98674 | MDL: 22.75517 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009735 + -6e-06 * gamma + 0.010097 * log(gamma) + 0.010909 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:46:38|0:14:10.334677] Finished
+[demo1|pde_solver|I|Oct23 17:46:42|0:14:13.923574] [pde_solver] Solve time: 3.444 s (mode=ls)
+[demo1|search|D|Oct23 17:46:42|0:14:14.045451] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:46:42|0:14:14.046201] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:46:42|0:14:14.046303] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:46:42|0:14:14.046346] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:46:42|0:14:14.046391] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:46:49|0:14:20.710657] Iter: 25 | Reward: 0.97887 | Complexity: 18 | R2: 0.99665 | MDL: 22.04638 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009588 + -1.3e-05 * gamma + 0.010204 * log(gamma) + 0.010532 * sin(cos(gamma) / gamma) | Speed: 267ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:46:51|0:14:22.504981] Iter: 30 | Reward: 0.97887 | Complexity: 18 | R2: 0.99665 | MDL: 22.04638 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009588 + -1.3e-05 * gamma + 0.010204 * log(gamma) + 0.010532 * sin(cos(gamma) / gamma) | Speed: 282ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:46:51|0:14:22.505250] Finished
+[demo1|pde_solver|I|Oct23 17:46:54|0:14:25.943035] [pde_solver] Solve time: 3.280 s (mode=ls)
+[demo1|search|D|Oct23 17:46:54|0:14:26.075244] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:46:54|0:14:26.075984] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:46:54|0:14:26.076084] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:46:54|0:14:26.076127] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:46:54|0:14:26.076189] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:47:01|0:14:32.744712] Iter: 25 | Reward: 0.95137 | Complexity: 18 | R2: 0.96765 | MDL: 23.80727 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009832 + -1e-06 * gamma + 0.010027 * log(gamma) + 0.011158 * sin(cos(gamma) / gamma) | Speed: 267ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=32)
+[demo1|mcts|I|Oct23 17:47:03|0:14:34.676524] Iter: 30 | Reward: 0.95137 | Complexity: 18 | R2: 0.96765 | MDL: 23.80727 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009832 + -1e-06 * gamma + 0.010027 * log(gamma) + 0.011158 * sin(cos(gamma) / gamma) | Speed: 287ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=34)
+[demo1|search|I|Oct23 17:47:03|0:14:34.676809] Finished
+[demo1|pde_solver|I|Oct23 17:47:06|0:14:37.947752] [pde_solver] Solve time: 3.112 s (mode=ls)
+[demo1|search|D|Oct23 17:47:06|0:14:38.082046] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:47:06|0:14:38.082796] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:47:06|0:14:38.082893] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:47:06|0:14:38.082939] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:47:06|0:14:38.082988] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:47:13|0:14:45.060414] Iter: 25 | Reward: 0.97472 | Complexity: 18 | R2: 0.99237 | MDL: 22.50047 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009689 + -8e-06 * gamma + 0.010131 * log(gamma) + 0.010791 * sin(cos(gamma) / gamma) | Speed: 279ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:47:15|0:14:46.877852] Iter: 30 | Reward: 0.97472 | Complexity: 18 | R2: 0.99237 | MDL: 22.50047 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009689 + -8e-06 * gamma + 0.010131 * log(gamma) + 0.010791 * sin(cos(gamma) / gamma) | Speed: 293ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:47:15|0:14:46.878127] Finished
+[demo1|pde_solver|I|Oct23 17:47:18|0:14:50.372004] [pde_solver] Solve time: 3.353 s (mode=ls)
+[demo1|search|D|Oct23 17:47:19|0:14:50.506545] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:47:19|0:14:50.507324] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:47:19|0:14:50.507427] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:47:19|0:14:50.507470] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:47:19|0:14:50.507518] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:47:25|0:14:57.234894] Iter: 25 | Reward: 0.96729 | Complexity: 18 | R2: 0.98463 | MDL: 22.86981 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009749 + -5e-06 * gamma + 0.010087 * log(gamma) + 0.010944 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:47:27|0:14:59.056634] Iter: 30 | Reward: 0.96729 | Complexity: 18 | R2: 0.98463 | MDL: 22.86981 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009749 + -5e-06 * gamma + 0.010087 * log(gamma) + 0.010944 * sin(cos(gamma) / gamma) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:47:27|0:14:59.056906] Finished
+[demo1|pde_solver|I|Oct23 17:47:31|0:15:02.584492] [pde_solver] Solve time: 3.381 s (mode=ls)
+[demo1|search|D|Oct23 17:47:31|0:15:02.707501] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:47:31|0:15:02.708255] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:47:31|0:15:02.708363] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:47:31|0:15:02.708406] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:47:31|0:15:02.708453] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:47:37|0:15:09.421186] Iter: 25 | Reward: 0.96395 | Complexity: 18 | R2: 0.98112 | MDL: 22.91973 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009769 + -4e-06 * gamma + 0.010072 * log(gamma) + 0.010996 * sin(cos(gamma) / gamma) | Speed: 268ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 17:47:39|0:15:11.014794] Iter: 30 | Reward: 0.96395 | Complexity: 18 | R2: 0.98112 | MDL: 22.91973 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009769 + -4e-06 * gamma + 0.010072 * log(gamma) + 0.010996 * sin(cos(gamma) / gamma) | Speed: 277ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.96, MDL=33)
+[demo1|search|I|Oct23 17:47:39|0:15:11.015062] Finished
+[demo1|pde_solver|I|Oct23 17:47:43|0:15:14.477024] [pde_solver] Solve time: 3.320 s (mode=ls)
+[demo1|search|D|Oct23 17:47:43|0:15:14.593665] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:47:43|0:15:14.594409] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:47:43|0:15:14.594514] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:47:43|0:15:14.594557] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:47:43|0:15:14.594603] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:47:49|0:15:21.427163] Iter: 25 | Reward: 0.97598 | Complexity: 18 | R2: 0.99368 | MDL: 22.30515 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009675 + -9e-06 * gamma + 0.010141 * log(gamma) + 0.010754 * sin(cos(gamma) / gamma) | Speed: 273ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:47:51|0:15:23.016759] Iter: 30 | Reward: 0.97598 | Complexity: 18 | R2: 0.99368 | MDL: 22.30515 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009675 + -9e-06 * gamma + 0.010141 * log(gamma) + 0.010754 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:47:51|0:15:23.017015] Finished
+[demo1|pde_solver|I|Oct23 17:47:55|0:15:26.534741] [pde_solver] Solve time: 3.363 s (mode=ls)
+[demo1|search|D|Oct23 17:47:55|0:15:26.680443] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:47:55|0:15:26.681233] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:47:55|0:15:26.681343] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:47:55|0:15:26.681395] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:47:55|0:15:26.681440] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:48:01|0:15:33.395428] Iter: 25 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05703 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009604 + -1.2e-05 * gamma + 0.010193 * log(gamma) + 0.010571 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:48:03|0:15:35.376982] Iter: 30 | Reward: 0.97895 | Complexity: 18 | R2: 0.99673 | MDL: 22.05703 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009604 + -1.2e-05 * gamma + 0.010193 * log(gamma) + 0.010571 * sin(cos(gamma) / gamma) | Speed: 290ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:48:03|0:15:35.377396] Finished
+[demo1|pde_solver|I|Oct23 17:48:07|0:15:39.039883] [pde_solver] Solve time: 3.481 s (mode=ls)
+[demo1|search|D|Oct23 17:48:07|0:15:39.314780] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:48:07|0:15:39.315806] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:48:07|0:15:39.315924] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:48:07|0:15:39.315971] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:48:07|0:15:39.316024] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:48:14|0:15:46.424600] Iter: 25 | Reward: 0.97850 | Complexity: 18 | R2: 0.99627 | MDL: 22.20779 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00963 + -1.1e-05 * gamma + 0.010174 * log(gamma) + 0.010638 * sin(cos(gamma) / gamma) | Speed: 284ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:48:16|0:15:48.390509] Iter: 30 | Reward: 0.97850 | Complexity: 18 | R2: 0.99627 | MDL: 22.20779 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.00963 + -1.1e-05 * gamma + 0.010174 * log(gamma) + 0.010638 * sin(cos(gamma) / gamma) | Speed: 302ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:48:16|0:15:48.390803] Finished
+[demo1|pde_solver|I|Oct23 17:48:20|0:15:51.639562] [pde_solver] Solve time: 3.043 s (mode=ls)
+[demo1|search|D|Oct23 17:48:20|0:15:51.902637] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:48:20|0:15:51.903574] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:48:20|0:15:51.903687] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:48:20|0:15:51.903733] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:48:20|0:15:51.903785] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:48:27|0:15:59.223821] Iter: 25 | Reward: 0.95991 | Complexity: 18 | R2: 0.97683 | MDL: 23.25328 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009791 + -3e-06 * gamma + 0.010056 * log(gamma) + 0.011053 * sin(cos(gamma) / gamma) | Speed: 293ms/iter (1.5ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 17:48:29|0:16:01.060802] Iter: 30 | Reward: 0.95991 | Complexity: 18 | R2: 0.97683 | MDL: 23.25328 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=23) | Best equation: 0.009791 + -3e-06 * gamma + 0.010056 * log(gamma) + 0.011053 * sin(cos(gamma) / gamma) | Speed: 305ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=33)
+[demo1|search|I|Oct23 17:48:29|0:16:01.061202] Finished
+[demo1|pde_solver|I|Oct23 17:48:33|0:16:04.687168] [pde_solver] Solve time: 3.426 s (mode=ls)
+[demo1|search|D|Oct23 17:48:33|0:16:04.921315] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:48:33|0:16:04.922080] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:48:33|0:16:04.922189] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:48:33|0:16:04.922233] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:48:33|0:16:04.922278] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:48:40|0:16:11.657545] Iter: 25 | Reward: 0.95088 | Complexity: 14 | R2: 0.96297 | MDL: 24.07921 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009851 + 0.010013 * log(gamma) + 0.011205 * sin(cos(gamma) / gamma) | Speed: 269ms/iter (1.3ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=33)
+[demo1|mcts|I|Oct23 17:48:42|0:16:13.476479] Iter: 30 | Reward: 0.95088 | Complexity: 14 | R2: 0.96297 | MDL: 24.07921 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009851 + 0.010013 * log(gamma) + 0.011205 * sin(cos(gamma) / gamma) | Speed: 285ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.93, MDL=34)
+[demo1|search|I|Oct23 17:48:42|0:16:13.476753] Finished
+[demo1|pde_solver|I|Oct23 17:48:45|0:16:16.708749] [pde_solver] Solve time: 3.033 s (mode=ls)
+[demo1|search|D|Oct23 17:48:45|0:16:16.929625] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:48:45|0:16:16.930523] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:48:45|0:16:16.930633] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:48:45|0:16:16.930674] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:48:45|0:16:16.930731] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:48:52|0:16:23.945856] Iter: 25 | Reward: 0.95136 | Complexity: 18 | R2: 0.96763 | MDL: 23.81655 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009833 + -1e-06 * gamma + 0.010026 * log(gamma) + 0.011158 * sin(cos(gamma) / gamma) | Speed: 281ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.93, MDL=32)
+[demo1|mcts|I|Oct23 17:48:54|0:16:25.857755] Iter: 30 | Reward: 0.95136 | Complexity: 18 | R2: 0.96763 | MDL: 23.81655 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=24) | Best equation: 0.009833 + -1e-06 * gamma + 0.010026 * log(gamma) + 0.011158 * sin(cos(gamma) / gamma) | Speed: 298ms/iter (1.5ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.94, MDL=34)
+[demo1|search|I|Oct23 17:48:54|0:16:25.858040] Finished
+[demo1|pde_solver|I|Oct23 17:48:57|0:16:29.067429] [pde_solver] Solve time: 3.007 s (mode=ls)
+[demo1|search|D|Oct23 17:48:57|0:16:29.298420] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:48:57|0:16:29.299345] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:48:57|0:16:29.299447] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:48:57|0:16:29.299488] Using custom leaf constants only: []
+[demo1|search|N|Oct23 17:48:57|0:16:29.299535] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 17:49:04|0:16:36.368028] Iter: 25 | Reward: 0.97621 | Complexity: 18 | R2: 0.99392 | MDL: 22.25509 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009672 + -9e-06 * gamma + 0.010143 * log(gamma) + 0.010746 * sin(cos(gamma) / gamma) | Speed: 283ms/iter (1.4ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.96, MDL=32)
+[demo1|mcts|I|Oct23 17:49:06|0:16:37.960320] Iter: 30 | Reward: 0.97621 | Complexity: 18 | R2: 0.99392 | MDL: 22.25509 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.009672 + -9e-06 * gamma + 0.010143 * log(gamma) + 0.010746 * sin(cos(gamma) / gamma) | Speed: 289ms/iter (1.4ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.97, MDL=33)
+[demo1|search|I|Oct23 17:49:06|0:16:37.960618] Finished
+[demo1|pde_solver|I|Oct23 17:49:10|0:16:41.706537] [pde_solver] Solve time: 3.567 s (mode=ls)
+[demo1|search|D|Oct23 17:49:10|0:16:41.941381] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Oct23 17:49:10|0:16:41.942171] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 17:49:10|0:16:41.942273] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 17:49:10|0:16:41.942315] Using custom leaf constants only: []

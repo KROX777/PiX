@@ -27,7 +27,7 @@ from ..env import simplify
 from ..env.tokenizer import Tokenizer
 from ..model.mdlformer import MDLformer
 from .utils import preprocess, sample_Xy
-from nd2py.utils import seed_all, Timer, NamedTimer, R2_score, RMSE_score
+from nd2py.utils import seed_all, Timer, NamedTimer, R2_score
 from pix.utils.scipy_utils import optimize_with_timeout
 
 def calculate_nesting_depth(expr):
@@ -123,8 +123,6 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                  c=1.41,
                  n_iter=100,
                  sample_num=300,
-                 log_per_iter:float=float('inf'),
-                 log_per_sec:float=float('inf'),
                  save_path:str|None=None,
                  keep_vars:bool=False,
                  normalize_y:bool=False,
@@ -170,8 +168,6 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.n_iter = n_iter
         self.sample_num = sample_num
 
-        self.log_per_iter = log_per_iter
-        self.log_per_sec = log_per_sec
         self.records = []
         self.logger = logging.getLogger(__name__)
         self.step_timer = Timer()
@@ -303,18 +299,14 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 record['eqtree'] = str(self.best)
                 stop = early_stop(self.best.r2, self.best.complexity, self.best.phi)
 
-            # Decide whether to log this iteration. Important: make time-based logging periodic
-            # by resetting the step timer after a time-triggered log, otherwise it would fire on every
-            # subsequent iteration once the threshold is exceeded.
+            # Simplified logging: only log every `log_every_n_iters`, and always log on final
+            # iteration or early stop. Remove time-based and legacy modulo-based logging.
             log_by_iter = bool(self.log_every_n_iters and (iter % self.log_every_n_iters == 0))
-            # Keep backward-compatibility with the old "not iter % ..." behavior; treat as modulo trigger
-            log_by_mod = bool(self.log_per_iter and ((iter % self.log_per_iter) == 0))
-            log_by_time = bool(self.step_timer.time > self.log_per_sec)
-            do_log = log_by_iter or log_by_mod or log_by_time or (iter == n_iter) or stop
+            do_log = log_by_iter or (iter == n_iter) or stop
             if do_log:
                 record['speed'] = (str(self.step_timer), str(self.view_timer))
                 record['detailed_time'] = str(self.named_timer)
-                
+
                 log['Reward'] = f'{self.best.reward:.5f}'
                 log['Complexity'] = self.best.complexity
                 log['R2'] = f'{self.best.r2:.5f}'
@@ -327,9 +319,6 @@ class MCTS4MDL(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 log['Time'] = record['detailed_time']
                 log['Current'] = str(expand)
                 self.logger.info(' | '.join(f'\033[4m{k}\033[0m: {v}' for k, v in log.items()))
-                # Reset the step timer if we logged due to time threshold to enforce periodic time-based logs
-                if log_by_time:
-                    self.step_timer.clear(reset=True)
 
             self.records.append(record)
             if self.save_path:

@@ -7,7 +7,11 @@ from pix.hypotheses_tree import HypothesesTree
 from pix.utils.others import *
 import sympy as sp
 from pix.utils.scipy_utils import optimize_with_timeout
-from pix.methods.SR4MDL.search import search as sr4mdl_search
+try:
+    from pix.methods.SR4MDL.search import search as sr4mdl_search
+except:
+    print("Error Loading SR4MDL")
+    sr4mdl_search = None
 import copy
 import logging
 
@@ -130,6 +134,8 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
         (y, x_vars) = SR_list[0]
         if method == "directxy":
             from pix.methods.pde_solver import run_solver
+            from pix.methods.hippylib_ns_inverse import run_solver_hippylib
+            
             if y == "mu":
                 u_x = tree.calculator.args_data[1]
                 v_x = tree.calculator.args_data[9]
@@ -154,17 +160,48 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 # doesn't treat it as a free variable from an outer scope. This avoids rare Python
                 # scoping issues where a name might be considered unbound in closures.
                 sr_search_fn = sr4mdl_search
+                
+                # Choose solver method: 'ls', 'adjoint', or 'hippylib'
+                solver_method = cfg.get('inverse_solver', 'ls')
+                use_hippylib = (solver_method == 'hippylib')
+                
+                if use_hippylib:
+                    print(f"[BFSearch] Using HIPPYLIB solver for μ estimation")
+                    gamma_reg = cfg.problem.get('gamma_regularization', 1e-6)   # wtf?
+                    maxiter_adj = cfg.get('adjoint_maxiter', 20)
 
                 def obj(x):
-                    mu = run_solver(tree.calculator.args_data, 
-                                    t_min=t_min, 
-                                    t_max=t_max, 
-                                    dx=tree.calculator.dx, 
-                                    dy=tree.calculator.dy, 
-                                    dt=tree.calculator.dt,
-                                    gt=gt,
-                                    Fx=Fx,
-                                    Fy=x)
+                    # x is Fy (external force in y-direction)
+                    if use_hippylib:
+                        # Use hippylib FEniCS-based solver
+                        mu = run_solver_hippylib(
+                            tree.calculator.args_data,
+                            t_min=t_min,
+                            t_max=t_max,
+                            dx=tree.calculator.dx,
+                            dy=tree.calculator.dy,
+                            dt=tree.calculator.dt,
+                            gamma=gamma_reg,
+                            maxiter=maxiter_adj,
+                            gtol=1e-5,
+                            gt=gt,
+                            verbose=cfg.verbose,
+                            Fx=Fx,
+                            Fy=x
+                        )
+                    else:
+                        # Use original least-squares solver
+                        mu = run_solver(
+                            tree.calculator.args_data, 
+                            t_min=t_min, 
+                            t_max=t_max, 
+                            dx=tree.calculator.dx, 
+                            dy=tree.calculator.dy, 
+                            dt=tree.calculator.dt,
+                            gt=gt,
+                            Fx=Fx,
+                            Fy=x
+                        )
                     sl = slice(t_min, t_max + 1)
                     mu_sub = mu[:, :, sl, 0]
                     
@@ -199,11 +236,6 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                         self.maxfun = maxfun
                         self.nfun = 0
                     def __call__(self, x, f, context):
-                        # called periodically by dual_annealing; increment local counter
-                        # Note: dual_annealing can perform multiple function evaluations
-                        # between callback invocations, so relying on callback alone
-                        # may not strictly limit the total 'obj' calls. Use the
-                        # built-in `maxfun` parameter to enforce a hard limit.
                         self.nfun += 1
                         try:
                             logging.getLogger(__name__).info("dual_annealing callback called: %d/%d", self.nfun, self.maxfun)
@@ -218,7 +250,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                     bounds=bounds,
                     maxfun=100,
                     callback=Callback(maxfun=100),
-                    seed=42            # 随机种子（可选）
+                    seed=42
                 )
                 
                 logger = logging.getLogger(__name__)

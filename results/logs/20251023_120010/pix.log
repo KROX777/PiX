@@ -1,0 +1,156 @@
+[demo1|search|I|Oct23 12:00:18|0:00:00.000253] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.1*x**0.3
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Oct23 12:00:18|0:00:00.002345] Shared log file: /home/ma-user/work/PiX/results/logs/20251023_120010/pix.log
+[demo1|single_test|I|Oct23 12:01:37|0:01:18.807073] 开始单次测试 | 模式=bfsearch_new_sr | 假设=[0, 1, 2, 4, 5, 7, 8, 10, 14, 15, 32]
+[demo1|search|I|Oct23 12:01:51|0:00:00.000597] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.1*x**0.3
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Cos,Log,Sin,Exp,Sqrt
+          custom_leaf_ops: 
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|search|N|Oct23 12:01:55|0:00:04.413610] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Oct23 12:01:55|0:00:04.413819] Using custom unary operators only: ['Cos', 'Log', 'Sin', 'Exp', 'Sqrt']
+[demo1|search|N|Oct23 12:01:55|0:00:04.413869] Using custom leaf constants only: []
+[demo1|search|N|Oct23 12:01:55|0:00:04.413921] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Cos, Log, Sin, Exp, Sqrt]
+        leaf: []
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|I|Oct23 12:02:00|0:00:09.436147] Iter: 9 | Reward: 0.96118 | Complexity: 18 | R2: 0.97818 | MDL: 21.56493 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.012488 + 7.1e-05 * gamma + 0.0086 * log(gamma) + 0.010189 * sin(cos(gamma) / gamma) | Speed: 558ms/iter (2.8ms/iter) | Time: None | Current: [gamma, gamma + exp(gamma), exp(gamma), cos(gamma + exp(gamma))] (N=1, Q=0.95, MDL=31)
+[demo1|mcts|I|Oct23 12:02:01|0:00:09.830115] Iter: 10 | Reward: 0.96118 | Complexity: 18 | R2: 0.97818 | MDL: 21.56493 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.012488 + 7.1e-05 * gamma + 0.0086 * log(gamma) + 0.010189 * sin(cos(gamma) / gamma) | Speed: 542ms/iter (2.7ms/iter) | Time: None | Current: [gamma, gamma + exp(gamma), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma))] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 12:02:01|0:00:10.305475] Iter: 11 | Reward: 0.96118 | Complexity: 18 | R2: 0.97818 | MDL: 21.56493 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.012488 + 7.1e-05 * gamma + 0.0086 * log(gamma) + 0.010189 * sin(cos(gamma) / gamma) | Speed: 536ms/iter (2.7ms/iter) | Time: None | Current: [gamma, gamma + exp(gamma), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), (gamma + exp(gamma)) * gamma] (N=1, Q=0.95, MDL=36)
+[demo1|mcts|I|Oct23 12:02:02|0:00:10.726430] Iter: 12 | Reward: 0.96118 | Complexity: 18 | R2: 0.97818 | MDL: 21.56493 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.012488 + 7.1e-05 * gamma + 0.0086 * log(gamma) + 0.010189 * sin(cos(gamma) / gamma) | Speed: 526ms/iter (2.6ms/iter) | Time: None | Current: [gamma, gamma + exp(gamma), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), log(gamma)] (N=1, Q=0.95, MDL=39)
+[demo1|mcts|I|Oct23 12:02:02|0:00:11.215111] Iter: 13 | Reward: 0.96118 | Complexity: 18 | R2: 0.97818 | MDL: 21.56493 | Best: [gamma, log(gamma), sin(cos(gamma) / gamma)] (N=0, Q=0.00, MDL=22) | Best equation: 0.012488 + 7.1e-05 * gamma + 0.0086 * log(gamma) + 0.010189 * sin(cos(gamma) / gamma) | Speed: 523ms/iter (2.6ms/iter) | Time: None | Current: [gamma, gamma + exp(gamma), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), exp(log(gamma))] (N=1, Q=0.96, MDL=39)
+[demo1|mcts|I|Oct23 12:02:03|0:00:11.906511] Iter: 14 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 522ms/iter (2.6ms/iter) | Time: None | Current: [gamma, gamma + exp(gamma), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), exp(log(gamma)), cos(exp(log(gamma)))] (N=1, Q=0.96, MDL=42)
+[demo1|mcts|I|Oct23 12:02:04|0:00:12.616895] Iter: 15 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 547ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), exp(log(gamma)), cos(exp(log(gamma)))] (N=1, Q=0.96, MDL=41)
+[demo1|mcts|I|Oct23 12:02:04|0:00:13.124794] Iter: 16 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 544ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), exp(log(gamma)) / gamma, cos(exp(log(gamma)))] (N=1, Q=0.95, MDL=43)
+[demo1|mcts|I|Oct23 12:02:05|0:00:13.711668] Iter: 17 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 547ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), gamma + exp(gamma) + exp(gamma), cos(gamma + exp(gamma)), exp(log(gamma)) / gamma, gamma + gamma] (N=1, Q=0.95, MDL=41)
+[demo1|mcts|I|Oct23 12:02:05|0:00:14.222826] Iter: 18 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 545ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), exp(gamma + gamma), cos(gamma + exp(gamma)), exp(log(gamma)) / gamma, gamma + gamma] (N=1, Q=0.94, MDL=41)
+[demo1|mcts|I|Oct23 12:02:06|0:00:14.726111] Iter: 19 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 543ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), exp(gamma + gamma), cos(gamma + exp(gamma)), exp(log(gamma)) / gamma, sqrt(gamma)] (N=1, Q=0.95, MDL=41)
+[demo1|mcts|I|Oct23 12:02:06|0:00:15.305677] Iter: 20 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 545ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), log(gamma), cos(gamma + exp(gamma)), exp(log(gamma)) / gamma, sqrt(gamma)] (N=1, Q=0.96, MDL=39)
+[demo1|mcts|I|Oct23 12:02:07|0:00:15.800249] Iter: 21 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 542ms/iter (2.7ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma)] (N=1, Q=0.95, MDL=36)
+[demo1|mcts|I|Oct23 12:02:08|0:00:16.618757] Iter: 22 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 555ms/iter (2.8ms/iter) | Time: None | Current: [gamma, exp(log(gamma)) + exp(log(gamma)), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma)] (N=1, Q=0.95, MDL=36)
+[demo1|mcts|I|Oct23 12:02:08|0:00:17.203518] Iter: 23 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 556ms/iter (2.8ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma)] (N=1, Q=0.95, MDL=37)
+[demo1|mcts|I|Oct23 12:02:09|0:00:17.796375] Iter: 24 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 558ms/iter (2.8ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma / sqrt(gamma) / gamma] (N=1, Q=0.95, MDL=33)
+[demo1|mcts|I|Oct23 12:02:09|0:00:18.334954] Iter: 25 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 557ms/iter (2.8ms/iter) | Time: None | Current: [gamma, cos(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.95, MDL=32)
+[demo1|mcts|I|Oct23 12:02:10|0:00:18.923345] Iter: 26 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 558ms/iter (2.8ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), gamma * gamma] (N=1, Q=0.94, MDL=31)
+[demo1|mcts|I|Oct23 12:02:10|0:00:19.514249] Iter: 27 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 559ms/iter (2.8ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), exp(gamma * gamma)] (N=1, Q=0.94, MDL=32)
+[demo1|mcts|I|Oct23 12:02:12|0:00:20.605748] Iter: 28 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 578ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), exp(log(gamma)) / gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), cos(gamma)] (N=1, Q=0.95, MDL=33)
+[demo1|mcts|I|Oct23 12:02:12|0:00:21.221753] Iter: 29 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 580ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), gamma / sqrt(gamma) + sqrt(gamma), cos(gamma)] (N=1, Q=0.95, MDL=30)
+[demo1|mcts|I|Oct23 12:02:13|0:00:21.828950] Iter: 30 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 580ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma) / sqrt(gamma) / gamma, cos(gamma)] (N=1, Q=0.95, MDL=33)
+[demo1|mcts|I|Oct23 12:02:13|0:00:22.422058] Iter: 31 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 581ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), gamma / sqrt(gamma), gamma * gamma, sqrt(gamma), log(gamma / sqrt(gamma)), cos(gamma)] (N=1, Q=0.95, MDL=31)
+[demo1|mcts|I|Oct23 12:02:14|0:00:23.016098] Iter: 32 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 581ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), cos(gamma) + gamma, gamma * gamma, sqrt(gamma), log(gamma / sqrt(gamma)), cos(gamma)] (N=1, Q=0.94, MDL=37)
+[demo1|mcts|I|Oct23 12:02:15|0:00:23.626123] Iter: 33 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 582ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), cos(gamma) + gamma, gamma * gamma, sqrt(gamma), log(gamma / sqrt(gamma)), log(gamma) / gamma] (N=1, Q=0.94, MDL=35)
+[demo1|mcts|I|Oct23 12:02:15|0:00:24.215607] Iter: 34 | Reward: 0.96240 | Complexity: 17 | R2: 0.97846 | MDL: 41.60977 | Best: [gamma, sqrt(gamma), cos(gamma) / gamma] (N=0, Q=0.00, MDL=42) | Best equation: 0.005307 + -0.000692 * gamma + 0.010874 * sqrt(gamma) + 0.008857 * cos(gamma) / gamma | Speed: 582ms/iter (2.9ms/iter) | Time: None | Current: [gamma, log(gamma) / sqrt(gamma), log(gamma), cos(gamma) + gamma, gamma * gamma * gamma, sqrt(gamma), log(gamma / sqrt(gamma)), log(gamma) / gamma] (N=1, Q=0.94, MDL=34)
+[demo1|search|N|Oct23 12:02:16|0:00:25.196003] Interrupted
+[demo1|single_test|E|Oct23 12:02:16|0:00:25.197191] (pix/single_test.py:321) 测试过程中出现错误: cannot access local variable 'loss' where it is not associated with a value
