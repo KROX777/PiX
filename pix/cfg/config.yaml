@@ -9,7 +9,7 @@ hydra:
     chdir: True
 
 method: mcts  # 可选: bfsearch, mcts
-dataset_path: pix/data/Untitled_v_up_2_v_bottom_2_ggg_9.81_2d_grid.npz
+dataset_path: pix/data/2Untitled_v_up_0.5_v_bottom_0.5_ggg_0_2d_grid.npz
 #
 verbose: True
 n_jobs: 10
@@ -20,3 +20,7 @@ epsilon: 0.05
 max_rollout: 30
 time_limit: 3600
 verbose_level: 2
+
+# For SR
+use_snip: True
+snip_ckpt: 

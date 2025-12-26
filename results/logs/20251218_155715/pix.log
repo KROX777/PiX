@@ -1,0 +1,187 @@
+[demo1|search|I|Dec18 15:57:21|0:00:00.000122] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Log
+          custom_leaf_ops: 1
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Dec18 15:57:21|0:00:00.002272] Shared log file: /Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/results/logs/20251218_155715/pix.log
+[demo1|search|I|Dec18 15:57:26|0:00:00.000199] {
+          dataset: default
+          name: demo1
+          seed: 0
+          tot_steps: 300000
+          device: cuda
+          continue_from: None
+          load_model: weights/checkpoint.pth
+          lr: 0.001
+          batch_size: 10
+          warmup_steps: 100
+          dropout: 0.1
+          d_model: 512
+          d_input: 64
+          d_output: 512
+          n_TE_layers: 8
+          max_len: 30
+          max_param: 5
+          max_var: 10
+          quiet: False
+          save_equations: 0
+          AMP: False
+          grad_clip: None
+          uniform_sample_number: 400
+          pred_loss_weight: 1.0
+          clip_loss_weight: 1.0
+          num_workers: 0
+          simplify: True
+          normalize_loss: True
+          normalize_X: True
+          normalize_y: True
+          function: f=0.01*cos(x)/(x*x) + 0.01*x*log(x) + 0.01
+          domain: x1:1,20
+          avoid_zero_eps: 0.05
+          sample_num: 512
+          n_iter: 150
+          c: 1.0
+          child_num: 50
+          n_playout: 20
+          d_playout: 10
+          eta: 0.999
+          complexity_alpha: 1.0
+          complexity_limit: None
+          keep_vars: True
+          normalize_all: False
+          remove_abnormal: True
+          use_old_model: False
+          cheat: False
+          disable_prod_model: True
+          max_power_abs: None
+          max_nesting_depth: 4
+          extra_leaf: 
+          custom_binary_ops: Add,Mul,Div
+          custom_unary_ops: Log
+          custom_leaf_ops: 1
+          use_custom_ops_only: True
+          save_dir: ./results/search/demo1
+        }
+[demo1|single_test|I|Dec18 15:57:26|0:00:00.025140] 开始单次测试 | 模式=bfsearch_new_sr | 假设=[0, 1, 2, 4, 5, 7, 8, 10, 14, 15, 32]
+[demo1|pde_solver|I|Dec18 15:57:27|0:00:00.650613] [pde_solver] Starting PDE solving for Fy=0.000000
+[demo1|pde_solver|I|Dec18 15:57:31|0:00:05.244405] [pde_solver] Estimated global g = -0.000169934
+[demo1|pde_solver|I|Dec18 15:57:31|0:00:05.244881] [pde_solver] Solve time: 4.531 s (mode=ls)
+[demo1|search|N|Dec18 15:57:32|0:00:06.140322] CUDA not available: forcing model device to CPU
+[demo1|search|I|Dec18 15:57:32|0:00:06.246376] [SR4MDL] Tokenizer init: 0.791s | Model build+load: 0.106s | device=cpu | model_path=/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/methods/SR4MDL/weights/checkpoint.pth
+[demo1|search|D|Dec18 15:57:32|0:00:06.246515] [SR4MDL] Using cached model+tokenizer
+[demo1|search|N|Dec18 15:57:32|0:00:06.247252] Using custom binary operators only: ['Add', 'Mul', 'Div']
+[demo1|search|N|Dec18 15:57:32|0:00:06.247289] Using custom unary operators only: ['Log']
+[demo1|search|N|Dec18 15:57:32|0:00:06.247326] Using custom leaf constants only: ['1']
+[demo1|search|N|Dec18 15:57:32|0:00:06.247371] target function: dataset-override
+        binary operators: [Add, Mul, Div]
+        unary operators: [Log]
+        leaf: [1]
+        variables: [gamma]
+        domain: {}
+        N: 512
+[demo1|mcts|W|Dec18 15:57:32|0:00:06.247527] (pix/methods/SR4MDL/sr4mdl/search/mcts.py:203) Unknown args: log_per_sec=inf
+[demo1|mcts|I|Dec18 15:59:14|0:01:48.090113] Iter: 25 | Reward: 0.98702 | Complexity: 13 | R2: 0.99994 | MDL: 28.94323 | Best: [gamma, log(1), gamma / (1 + gamma)] (N=0, Q=0.00, MDL=29) | Best equation: 0.51246 + 0.000309 * gamma + -0.504586 * gamma / (1 + gamma) | Speed: 4.1s/iter (20ms/iter) | Time: None | Current: [gamma, (gamma / 1 + gamma / 1) / gamma, 1 + 1, gamma / log(1) * gamma, gamma / 1 + gamma / 1] (N=1, Q=0.98, MDL=30)
+[demo1|mcts|I|Dec18 16:00:53|0:03:27.468087] Iter: 50 | Reward: 0.98702 | Complexity: 13 | R2: 0.99994 | MDL: 28.94323 | Best: [gamma, log(1), gamma / (1 + gamma)] (N=0, Q=0.00, MDL=29) | Best equation: 0.51246 + 0.000309 * gamma + -0.504586 * gamma / (1 + gamma) | Speed: 4.0s/iter (20ms/iter) | Time: None | Current: [gamma, log(gamma) + gamma, log(gamma) * gamma, log(gamma) * log(gamma) / gamma, log(gamma) / 1, log(gamma), log(gamma) * gamma / gamma] (N=1, Q=0.98, MDL=37)
+[demo1|mcts|I|Dec18 16:02:45|0:05:18.902091] Iter: 75 | Reward: 0.98702 | Complexity: 13 | R2: 0.99994 | MDL: 28.94323 | Best: [gamma, log(1), gamma / (1 + gamma)] (N=0, Q=0.00, MDL=29) | Best equation: 0.51246 + 0.000309 * gamma + -0.504586 * gamma / (1 + gamma) | Speed: 4.2s/iter (21ms/iter) | Time: None | Current: [gamma, 1 + 1 + gamma, gamma + 1, gamma + log(gamma), log(log(gamma)), 1 + 1, log(gamma), log(log(gamma)) * log(log(gamma))] (N=1, Q=0.97, MDL=33)
+[demo1|mcts|I|Dec18 16:04:36|0:07:10.374048] Iter: 100 | Reward: 0.98702 | Complexity: 13 | R2: 0.99994 | MDL: 28.94323 | Best: [gamma, log(1), gamma / (1 + gamma)] (N=0, Q=0.00, MDL=29) | Best equation: 0.51246 + 0.000309 * gamma + -0.504586 * gamma / (1 + gamma) | Speed: 4.2s/iter (21ms/iter) | Time: None | Current: [gamma, log(gamma) / log(log(gamma)), log(gamma + 1), gamma / 1, gamma * gamma, gamma / 1 / 1, gamma * gamma / 1 / 1] (N=1, Q=0.98, MDL=33)
+[demo1|search|E|Dec18 16:05:02|0:07:35.924523] (pix/methods/SR4MDL/search.py:537) Traceback (most recent call last):
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/methods/SR4MDL/search.py", line 532, in search
+            loss = est.fit(X, y, use_tqdm=False, is_final_optim=is_final_optim)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/methods/SR4MDL/sr4mdl/search/mcts.py", line 349, in fit
+            sol = self.optimization(node_opt, init_params=init_params)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/methods/SR4MDL/sr4mdl/search/mcts.py", line 624, in optimization
+            sol = optimize_with_timeout(
+                  ^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/utils/scipy_utils.py", line 55, in optimize_with_timeout
+            sol = scipy.optimize.minimize(guarded_mse, init_params, method="L-BFGS-B",
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/miniconda3/envs/sr4mdl/lib/python3.12/site-packages/scipy/optimize/_minimize.py", line 784, in minimize
+            res = _minimize_lbfgsb(fun, x0, args, jac, bounds,
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/miniconda3/envs/sr4mdl/lib/python3.12/site-packages/scipy/optimize/_lbfgsb_py.py", line 413, in _minimize_lbfgsb
+            sf = _prepare_scalar_function(fun, x0, jac=jac, args=args, epsilon=eps,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/miniconda3/envs/sr4mdl/lib/python3.12/site-packages/scipy/optimize/_optimize.py", line 310, in _prepare_scalar_function
+            sf = ScalarFunction(fun, x0, args, grad, hess,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/miniconda3/envs/sr4mdl/lib/python3.12/site-packages/scipy/optimize/_differentiable_functions.py", line 274, in __init__
+            self._update_fun()
+          File "/Users/oscar/miniconda3/envs/sr4mdl/lib/python3.12/site-packages/scipy/optimize/_differentiable_functions.py", line 353, in _update_fun
+            fx = self._wrapped_fun(self.x)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/miniconda3/envs/sr4mdl/lib/python3.12/site-packages/scipy/_lib/_util.py", line 590, in __call__
+            fx = self.f(np.copy(x), *self.args)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/utils/scipy_utils.py", line 26, in guarded_mse
+            f = mse_func(x)
+                ^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/calculator.py", line 589, in <lambda>
+            loss_func = lambda params: mse_func_noresample(params) + reg_func(params)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/calculator.py", line 586, in <lambda>
+            mse_func_noresample = lambda params: sum(mse_list_sampled_noresample(params))
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/calculator.py", line 563, in mse_list_sampled_noresample
+            pooled_res = pooling(res_values, (pool_size, pool_size))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          File "/Users/oscar/Desktop/OX/CS/AI/PDE/PDExplorer/PiX/pix/utils/numpy_utils.py", line 59, in pooling
+            m, n = mat.shape[:2]
+            ^^^^
+        ValueError: not enough values to unpack (expected 2, got 0)
+        
+[demo1|single_test|E|Dec18 16:05:02|0:07:35.939359] (pix/single_test.py:252) 测试过程中出现错误: cannot access local variable 'loss' where it is not associated with a value

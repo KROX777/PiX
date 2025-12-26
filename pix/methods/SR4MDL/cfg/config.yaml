@@ -72,8 +72,8 @@ extra_leaf: ''
 
 # Custom operators (comma-separated strings); use 'pi' or 'e' in leaf list if desired
 custom_binary_ops: 'Add,Mul,Div'
-custom_unary_ops: 'Cos,Log,Sin,Exp,Sqrt'
-custom_leaf_ops: ''
+custom_unary_ops: ''
+custom_leaf_ops: '1'
 use_custom_ops_only: true
 
 # End of config

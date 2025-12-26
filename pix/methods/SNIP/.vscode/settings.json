@@ -1,0 +1,11 @@
+{
+    "modelarts.train.cloud.obsBasePath": "obs://sai.yanjc/xcy/",
+    "modelarts.train.storageOption": {
+        "useDefault": true,
+        "developMode": "online",
+        "obsSfsTab": "obs",
+        "sfsTarget": "/home/ma-user/modelarts/user-job-dir/",
+        "workspaceOpened": true,
+        "obsPath": "obs://sai.yanjc/xcy/"
+    }
+}

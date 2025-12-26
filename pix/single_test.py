@@ -29,11 +29,7 @@ os.makedirs(SHARED_LOG_DIR, exist_ok=True)
 os.environ.setdefault('PIX_LOG_FILE', SHARED_LOG_FILE)
 
 # Import SR4MDL.search early so it picks up PIX_LOG_FILE and initializes the shared logger
-try:
-    from pix.methods.SR4MDL import search as _sr4mdl_search  # noqa: F401
-except Exception:
-    # Defer errors until the mode that needs it; not all modes import SR4MDL
-    _sr4mdl_search = None
+from pix.methods.SR4MDL import search as _sr4mdl_search  # noqa: F401
 
 # Set up console logging for immediate feedback; use the shared 'sr4mdl' logger tree to unify outputs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')

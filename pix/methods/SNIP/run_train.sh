@@ -1,0 +1,9 @@
+#Train Encoder-Decoder model for the Numeric-to-Symbolic Generation Task of Symbolic Regression (w/ SNIP Encoder & E2E Decoder)
+python train.py --reload_model_snipenc /home/ma-user/work/srbench/algorithms/snip/weights/snip-10dmax.pth --reload_model_e2edec /sfs/xcy/e2e.pth --freeze_encoder True --batch_size 64 --dump_path /sfs/xcy/ --max_input_dimension 10 --n_steps_per_epoch 1000 --max_epoch 100000 --exp_name snipe2e --exp_id run-test --lr 4e-5 --latent_dim 512 --save_periodic 10 --n_dec_layers 16
+
+torchrun --nproc_per_node=2 train.py --reload_model_snipenc /home/ma-user/work/srbench/algorithms/snip/weights/snip-10dmax.pth --freeze_encoder True --batch_size 64 --dump_path /sfs/xcy/ --max_input_dimension 10 --n_steps_per_epoch 1000 --max_epoch 300 --exp_name discdiff2 --exp_id run-test --lr 4e-5 --latent_dim 512 --save_periodic 10 --n_dec_layers 16 --use_diffusion True --use_stable_diffusion False --diffusion_num_timesteps 100
+
+python train.py --reload_model_snipenc /home/ma-user/work/srbench/algorithms/snip/weights/snip-10dmax.pth --reload_model_e2edec /sfs/xcy/e2e.pth --freeze_encoder True --batch_size 64 --dump_path /sfs/xcy/ --max_input_dimension 10 --n_steps_per_epoch 1000 --max_epoch 100000 --exp_name stablediff --exp_id run-test --lr 4e-5 --latent_dim 512 --save_periodic 10 --n_dec_layers 16 --use_diffusion True --use_stable_diffusion True --diffusion_num_timesteps 1000
+
+#Continue Training with the Encoder-Decoder Pretrainde Checkpoints for Symbolic Regression
+python train.py --reload_checkpoint ./weights/snip-e2e-sr.pth --freeze_encoder True --batch_size 64 --dump_path ./dump --max_input_dimension 10 --n_steps_per_epoch 1000 --max_epoch 100000 --exp_name snipe2e --exp_id run-test2 --lr 4e-5 --latent_dim 512 --save_periodic 10 --n_dec_layers 16

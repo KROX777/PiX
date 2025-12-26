@@ -10,6 +10,16 @@ from pix.utils.scipy_utils import optimize_with_timeout
 from pix.methods.SR4MDL.search import search as sr4mdl_search
 import copy
 import logging
+import torch
+try:
+    from pix.methods.SNIP.parsers import get_parser as snip_get_parser
+    from pix.methods.SNIP.symbolicregression.envs import build_env as snip_build_env
+    from pix.methods.SNIP.symbolicregression.model import build_modules as snip_build_modules
+except Exception:
+    # Delayed import fallback: if SNIP not available, we'll raise at runtime when called
+    snip_get_parser = None
+    snip_build_env = None
+    snip_build_modules = None
 
 class EarlyStopException(Exception):
     """Custom exception to signal early stopping"""
@@ -70,6 +80,107 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     
     return binary_ops, unary_ops, leaf_ops
 
+
+def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cpu', max_input_dimension=10, top_k=10):
+    """Run SNIP E2E model on (x_arr, y_arr) and return best candidate expr and its MSE.
+
+    x_arr, y_arr: 1D numpy arrays
+    cfg: config object (may contain 'snip_ckpt' path or 'use_snip' flag)
+    """
+    if snip_get_parser is None or snip_build_env is None or snip_build_modules is None:
+        raise ImportError("SNIP modules not available: cannot run SNIP symbolic regression")
+
+    # build minimal params similar to quick_test_e2e
+    params = snip_get_parser().parse_args([])
+    params.use_diffusion = False
+    params.cpu = True
+    params.batch_size = 1
+    params.eval_only = True
+    params.reload_model = ckpt_path if ckpt_path is not None else (cfg.get('snip_ckpt', '') if hasattr(cfg, 'get') else cfg.get('snip_ckpt', ''))
+    params.reload_model_snipenc = ""
+    params.reload_model_e2edec = ""
+    params.max_input_dimension = max_input_dimension
+
+    env = snip_build_env(params)
+    modules = snip_build_modules(env, params)
+
+    # Try reload checkpoint weights if provided
+    if params.reload_model:
+        try:
+            ckpt = torch.load(params.reload_model, map_location=torch.device(device))
+            for k, v in modules.items():
+                if k in ckpt:
+                    try:
+                        v.load_state_dict(ckpt[k])
+                    except RuntimeError:
+                        stripped = {name.partition('.')[-1]: w for name, w in ckpt[k].items()}
+                        v.load_state_dict(stripped)
+        except Exception as e:
+            print("Warning: failed to load SNIP checkpoint:", e)
+
+    # Move modules to device and eval
+    for m in modules.values():
+        m.to(torch.device(device))
+        m.eval()
+
+    embedder = modules.get('embedder')
+    encoder = modules.get('encoder_y')
+    decoder = modules.get('decoder')
+    mapper = modules.get('mapper')
+    if embedder is None or encoder is None or decoder is None or mapper is None:
+        raise RuntimeError('Missing SNIP modules (embedder/encoder/decoder/mapper)')
+
+    # Prepare sequence in SNIP expected format: list of (x_arr_point, y_arr_point)
+    seq = []
+    for xi, yi in zip(x_arr, y_arr):
+        seq.append((np.array([xi], dtype=float), np.array([yi], dtype=float)))
+    batch_input = [seq]
+
+    with torch.no_grad():
+        x_enc, x_len = embedder(batch_input)
+        z_rep = encoder('fwd', x=x_enc, lengths=x_len, causal=False)
+        src_enc = mapper(z_rep)
+        generations, gen_len = decoder.generate_from_latent(src_enc, max_len=200)
+
+    # Convert tokens to infix strings similar to quick_test_e2e
+    generations = generations.unsqueeze(-1).view(generations.shape[0], generations.shape[1], 1)
+    generations = generations.transpose(0, 1).transpose(1, 2).cpu().tolist()
+    outputs = [
+        list(
+            filter(
+                lambda x: x is not None,
+                [env.idx_to_infix(hyp[1:-1], is_float=False, str_array=False) for hyp in generations[i]],
+            )
+        )
+        for i in range(len(generations))
+    ]
+
+    # compute MSE per candidate (first batch only)
+    candidates = outputs[0] if len(outputs) > 0 else []
+    results = []
+    gamma_sym = sp.symbols('gamma')
+    locals_map = {'gamma': gamma_sym, 'sin': sp.sin, 'cos': sp.cos, 'tan': sp.tan, 'log': sp.log, 'exp': sp.exp, 'sqrt': sp.sqrt, 'pi': sp.pi, 'e': sp.E}
+    for cand in candidates:
+        try:
+            expr = sp.sympify(cand, locals=locals_map)
+            f = sp.lambdify(gamma_sym, expr, 'numpy')
+            pred = f(x_arr)
+            # ensure numeric array
+            pred = np.array(pred, dtype=float)
+            mask = np.isfinite(pred) & np.isfinite(y_arr)
+            if mask.sum() == 0:
+                continue
+            mse = float(np.mean((pred[mask] - y_arr[mask])**2))
+            results.append((cand, mse))
+        except Exception:
+            continue
+
+    if not results:
+        raise RuntimeError('SNIP produced no valid numeric candidates')
+
+    results = sorted(results, key=lambda t: t[1])
+    return results[0][0], results[0][1]
+
 def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, verbose=True, preset=None, allowed_functions=None, method="directxy"):
     tree = HypothesesTree(cfg, root_dir)
     SR_list = []
@@ -97,19 +208,21 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
         print("SR_list ", SR_list)
     
     # --- optimization---
-    #initial guess
+    ## DEBUG
     # tree.calculator.register_unknown_var('b0')
     # tree.calculator.register_unknown_var('b1')
     # tree.calculator.register_unknown_var('b2')
-    # tree.calculator.update_unknown_var('mu', 'b0 + b1*gamma^1.3 + b2*gamma')
+    # tree.calculator.update_unknown_var('mu', 'b0 + b1/(b2+gamma)')
     # tree.calculator.upd_local_dict()
-
-    # print(init_params)
-    # print(train_loss_func(init_params))
+    # train_loss_func, mse_list_train = tree.calculator.get_loss_func(deci_list_len=len(deci_list))
+    # valid_loss_func, mse_list_valid = tree.calculator.get_loss_func(mode="valid", deci_list_len=len(deci_list))
+    # init_params = [0, 0, 0]
 
     # sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
     # print(sol['x'])
+    # print(sol['fun'])
     # a = input('Press Enter to continue...')
+    ## DEBUG
     
     if len(SR_list) == 0: #ordinary solver
         # Disable aggressive bound-based early stop by default; rely on time limit/practical convergence.
@@ -151,7 +264,10 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
 
                 t_min, t_max = 81, 85
                 Fx = 0
-
+        
+                # Bind the imported search function into a local name so the inner obj closure
+                # doesn't treat it as a free variable from an outer scope. This avoids rare Python
+                # scoping issues where a name might be considered unbound in closures.
                 sr_search_fn = sr4mdl_search
                 
                 use_hippylib = False
@@ -190,6 +306,8 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                             dy=tree.calculator.dy, 
                             dt=tree.calculator.dt,
                             gt=gt,
+                            Fx=Fx,
+                            Fy=0,       # Fy=0 when estimate_g_global=True
                             estimate_g_global=True
                         )
                     
@@ -208,6 +326,26 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                     gamma_sorted = gamma_flat[order]
                     mu_sorted = mu_flat[order]
                     calculator_copy = copy.deepcopy(tree.calculator)
+                    # Optionally run SNIP-based symbolic regression (from SNIP/quick_test_e2e)
+                    use_snip = False
+                    try:
+                        # prefer explicit config flag if present
+                        if hasattr(cfg, 'get'):
+                            use_snip = bool(cfg.get('use_snip', False))
+                        elif 'use_snip' in cfg:
+                            use_snip = bool(cfg['use_snip'])
+                    except Exception:
+                        use_snip = False
+
+                    if use_snip:
+                        # Run SNIP model on the (gamma_sorted, mu_sorted) dataset
+                        try:
+                            best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg)
+                            print("SNIP best:", best_expr, best_loss)
+                            return best_loss
+                        except Exception as e:
+                            print("SNIP run failed, falling back to sr4mdl_search:", e)
+
                     expr, loss = sr_search_fn(calculator=calculator_copy, 
                                                y_name='mu', 
                                                x_name=['gamma'], 
@@ -217,7 +355,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                                                y_override=mu_sorted, 
                                                mode="inverse", 
                                                n_iter=100, 
-                                               is_final_optim=False,
+                                               is_final_optim=True,
                                                log_every_n_iters=25)
                     print(expr, loss)
                     return loss

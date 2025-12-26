@@ -769,7 +769,7 @@ def compute_pde_residual_pointwise(
         "t_range": (int(t_min), int(t_max)),
     }
 
-def assemble_A_b_Q_from_args(args):
+def assemble_A_b_Q_from_args(args, Fx, Fy):
     """Assemble (A, b, Q) directly from args with the same formulas as diagnose_mu_constant.
 
     Returns:
@@ -841,6 +841,10 @@ def assemble_A_b_Q_from_args(args):
     Q[..., 0] = rho * (u_t + u * u_x + v * u_y + u * div_u) + p_x
     Q[..., 1] = rho * (v_t + u * v_x + v * v_y + v * div_u) + p_y
 
+    # Add external forces Fx and Fy
+    Q[..., 0] += Fx
+    Q[..., 1] += Fy
+
     return A, b, Q
 
 
@@ -859,6 +863,8 @@ def run_solver(
     gt: np.ndarray = None,
     solve_mode: str = "ls",  # "ls" (joint least squares) or "compwise"
     verbose: bool = False,
+    Fx: float = 0.0,
+    Fy: float = 0.0,
     estimate_g_global: bool = False
 ):
     """Assemble A, b, Q from the provided fields in `args`.
@@ -876,10 +882,10 @@ def run_solver(
         mu: array shape (nx, ny, nt, 2) solution of A·∇μ + μb = Q.
     """
     logger = logging.getLogger('sr4mdl.pde_solver')
-    logger.info("[pde_solver] Starting PDE solving")
+    logger.info("[pde_solver] Starting PDE solving for Fy=%f", Fy)
     t0 = time.perf_counter()
     # Assemble fields using the diagnose-consistent helper
-    A, b, Q = assemble_A_b_Q_from_args(args)
+    A, b, Q = assemble_A_b_Q_from_args(args, Fx, Fy)
     t1 = time.perf_counter()
 
     # infer grid sizes from Q shape

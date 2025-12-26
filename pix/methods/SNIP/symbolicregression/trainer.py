@@ -1,0 +1,1114 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
+import json
+import os
+import io
+import sys
+import time
+from logging import getLogger
+from collections import OrderedDict
+import numpy as np
+import pandas as pd
+import torch
+from torch import nn
+from torch.nn.utils import clip_grad_norm_
+from .optim import get_optimizer
+from .utils import to_cuda
+from collections import defaultdict
+import torch.nn.functional as F
+import seaborn as sns
+import matplotlib.pyplot as plt
+import copy
+import requests
+from .diffusion_scheduler import DiscreteDiffusion, LatentDiffusion
+
+# if torch.cuda.is_available():
+has_apex = True
+try:
+    import apex
+except:
+    has_apex = False
+
+logger = getLogger()
+
+def contrastive_loss(z_dist, y_dist, alpha=100):
+    B = z_dist.shape[0]
+    
+    # Compute the loss for similar pairs (y_dist_ij = 0)
+    L_similar =  (alpha * z_dist - y_dist)**2
+
+    # Average the losses over the valid pairs
+    valid_pairs = torch.triu(torch.ones(B, B), diagonal=1).bool() # Exclude the diagonal and lower triangle
+    num_valid_pairs = valid_pairs.sum()
+    loss = (L_similar)[valid_pairs].sum() / num_valid_pairs
+    
+    return loss , L_similar
+
+
+class LoadParameters(object):
+    def __init__(self, modules, params):
+        self.modules = modules
+        self.params = params
+        self.set_parameters()
+
+    def set_parameters(self):
+        """
+        Set parameters.
+        """
+        self.parameters = {}
+        named_params = []
+        for v in self.modules.values():
+            named_params.extend(
+                [(k, p) for k, p in v.named_parameters() if p.requires_grad]
+            )
+        self.parameters["model"] = [p for k, p in named_params]
+        for k, v in self.parameters.items():
+            logger.info("Found %i parameters in %s." % (len(v), k))
+            assert len(v) >= 1
+
+
+class Trainer(object):
+    def __init__(self, modules, env, params, path=None, root=None):
+        """
+        Initialize trainer.
+        """
+        # modules / params
+        self.modules = modules
+        self.params = params
+        self.env = env
+
+        # epoch / iteration size
+        self.n_steps_per_epoch = params.n_steps_per_epoch
+        self.inner_epoch = self.total_samples = self.n_equations = 0
+        self.infos_statistics = defaultdict(list)
+        self.errors_statistics = defaultdict(int)
+
+        # data iterators
+        self.iterators = {}
+
+        # set parameters
+        self.set_parameters()
+
+        # z_rep cache control: allow disabling via params.use_zrep_cache (default: True)
+        self.use_zrep_cache = getattr(self.params, 'use_zrep_cache', True)
+
+        # float16 / distributed (no AMP)
+        assert params.amp >= 1 or not params.fp16
+        assert params.amp >= 0 or params.accumulate_gradients == 1
+        # assert not params.multi_gpu or params.amp == -1 or params.nvidia_apex
+        assert not params.nvidia_apex or has_apex
+
+        # set optimizer
+        self.set_optimizer()
+
+        # float16 / distributed (AMP)
+        self.scaler = None
+        if params.amp >= 0:
+            self.init_amp()
+
+        # stopping criterion used for early stopping
+        if params.stopping_criterion != "":
+            split = params.stopping_criterion.split(",")
+            assert len(split) == 2 and split[1].isdigit()
+            self.decrease_counts_max = int(split[1])
+            self.decrease_counts = 0
+            if split[0][0] == "_":
+                self.stopping_criterion = (split[0][1:], False)
+            else:
+                self.stopping_criterion = (split[0], True)
+            self.best_stopping_criterion = -1e12 if self.stopping_criterion[1] else 1e12
+        else:
+            self.stopping_criterion = None
+            self.best_stopping_criterion = None
+
+        # validation metrics
+        self.metrics = []
+        metrics = [m for m in params.validation_metrics.split(",") if m != ""]
+        for m in metrics:
+            m = (m, False) if m[0] == "_" else (m, True)
+            self.metrics.append(m)
+        self.best_metrics = {
+            metric: (-np.infty if biggest else np.infty)
+            for (metric, biggest) in self.metrics
+        }
+
+        # training statistics
+        self.epoch = 0
+        self.n_iter = 0
+        self.n_total_iter = 0
+        self.stats = OrderedDict(
+            [("processed_e", 0)]
+            + [("processed_w", 0)]
+            + [("Contrastive_Loss", [])] ## modified
+            + [("Recon_Loss", [])]
+            + sum(
+                [[(x, []), (f"{x}-AVG-STOP-PROBS", [])] for x in env.TRAINING_TASKS], []
+            )
+        )
+        self.last_time = time.time()
+        # Per-epoch loss accumulation (task -> list of loss values)
+        self.epoch_losses = defaultdict(list)
+        if getattr(self.params, 'dump_path', None) is not None:
+            os.makedirs(self.params.dump_path, exist_ok=True)
+            self.run_log_path = os.path.join(self.params.dump_path, "train_run.log")
+            self.run_log = open(self.run_log_path, "a", encoding="utf-8")
+
+        # History of per-epoch averages for plotting
+        self.epoch_history = defaultdict(list)
+
+        if params.use_diffusion:
+            # support both discrete categorical diffusion and latent (stable) diffusion
+            if getattr(params, 'use_stable_diffusion', False):
+                device = 'cuda' if torch.cuda.is_available() and not params.cpu else 'cpu'
+                self.latent_diffusion = LatentDiffusion(num_timesteps=params.diffusion_num_timesteps, latent_dim=getattr(params,'latent_dim',512), device=device, schedule_type=params.diffusion_schedule_type)
+            else:
+                self.diffusion = DiscreteDiffusion(
+                    num_timesteps=params.diffusion_num_timesteps,
+                    vocab_size=env.n_words,
+                    device='cuda' if torch.cuda.is_available() and not params.cpu else 'cpu',
+                    schedule_type=params.diffusion_schedule_type,
+                )
+
+        ### Load pretrained Encoder from SNIP (include encoder_f if available)
+        if self.params.reload_model_snipenc != "":
+            modules_to_load = ['embedder','encoder_y']
+            if 'encoder_f' in self.modules:
+                modules_to_load.append('encoder_f')
+            self.reload_model(modules_to_load=modules_to_load, path=self.params.reload_model_snipenc, requires_grad=False)
+        
+        ## Load pretrained decoder (SNIP e2e decoder checkpoint)
+        if self.params.reload_model_e2edec != "":
+            model_path = self.params.reload_model_e2edec
+            if not torch.cuda.is_available() or params.cpu:
+                data = torch.load(model_path, map_location=torch.device('cpu'))
+            else:
+                data = torch.load(model_path)
+
+            # Always load into the common 'decoder' module for simplicity
+            self.modules['decoder'] = data.decoder
+            logger.info(f"Loaded decoder module from {model_path}")
+
+        ## Uncomment Reload Checkpoint and Comment out Reload Models if Continue Training from ckpt
+        self.reload_checkpoint(path=path, root=root)
+
+        if self.params.freeze_encoder:
+            print("Loading Encoder with frozen weights")
+            for param in self.modules["embedder"].parameters():
+                param.requires_grad = False
+            for param in self.modules["encoder_y"].parameters():
+                param.requires_grad = False
+
+        if self.params.freeze_decoder:
+            print("Loading decoder with frozen weights")
+            for param in self.modules["decoder"].parameters():
+                param.requires_grad = False
+
+        # file handler to export data
+        if params.export_data:
+            assert params.reload_data == ""
+            params.export_path_prefix = os.path.join(params.dump_path, "data.prefix")
+            self.file_handler_prefix = io.open(
+                params.export_path_prefix, mode="a", encoding="utf-8"
+            )
+            logger.info(
+                f"Data will be stored in prefix in: {params.export_path_prefix} ..."
+            )
+
+        # reload exported data
+        if params.reload_data != "":
+            logger.info(params.reload_data)
+            # assert params.num_workers in [0, 1] ##TODO: why have that?
+            assert params.export_data is False
+            s = [x.split(",") for x in params.reload_data.split(";") if len(x) > 0]
+            assert (
+                len(s)
+                >= 1
+            )
+            self.data_path = {
+                task: (
+                    train_path if train_path != "" else None,
+                    valid_path if valid_path != "" else None,
+                    test_path if test_path != "" else None,
+                )
+                for task, train_path, valid_path, test_path in s
+            }
+
+            logger.info(self.data_path)
+
+            for task in self.env.TRAINING_TASKS:
+                assert (task in self.data_path) == (task in params.tasks)
+        else:
+            self.data_path = None
+
+        # create data loaders
+        if not params.eval_only:
+            if params.env_base_seed < 0:
+                params.env_base_seed = np.random.randint(1_000_000_000)
+            self.dataloader = {
+                task: iter(self.env.create_train_iterator(task, self.data_path, params))
+                for task in params.tasks
+            }
+
+    def set_new_train_iterator_params(self, args={}):
+        params = self.params
+        if params.env_base_seed < 0:
+            params.env_base_seed = np.random.randint(1_000_000_000)
+        self.dataloader = {
+            task: iter(
+                self.env.create_train_iterator(task, self.data_path, params, args)
+            )
+            for task in params.tasks
+        }
+        logger.info(
+            "Succesfully replaced training iterator with following args:{}".format(args)
+        )
+        return
+
+    def set_parameters(self):
+        """
+        Set parameters.
+        """
+        self.parameters = {}
+        named_params = []
+        for v in self.modules.values():
+            named_params.extend(
+                [(k, p) for k, p in v.named_parameters() if p.requires_grad]
+            )
+        self.parameters["model"] = [p for k, p in named_params]
+        for k, v in self.parameters.items():
+            logger.info("Found %i parameters in %s." % (len(v), k))
+            assert len(v) >= 1
+
+    def set_optimizer(self):
+        """
+        Set optimizer.
+        """
+        params = self.params
+        self.optimizer = get_optimizer(
+            self.parameters["model"], params.lr, params.optimizer
+        )
+        logger.info("Optimizer: %s" % type(self.optimizer))
+
+    def init_amp(self):
+        """
+        Initialize AMP optimizer.
+        """
+        params = self.params
+        assert (
+            params.amp == 0
+            and params.fp16 is False
+            or params.amp in [1, 2, 3]
+            and params.fp16 is True
+        )
+        mod_names = sorted(self.modules.keys())
+        if params.nvidia_apex is True:
+            modules, optimizer = apex.amp.initialize(
+                [self.modules[k] for k in mod_names],
+                self.optimizer,
+                opt_level=("O%i" % params.amp),
+            )
+            self.modules = {k: module for k, module in zip(mod_names, modules)}
+            self.optimizer = optimizer
+        else:
+            self.scaler = torch.cuda.amp.GradScaler()
+
+    def optimize(self, loss):
+        """
+        Optimize.
+        """
+        # check NaN
+        if (loss != loss).data.any():
+            logger.warning("NaN detected")
+
+        params = self.params
+
+        # optimizer
+        optimizer = self.optimizer
+
+        # regular optimization
+        if params.amp == -1:
+            optimizer.zero_grad()
+            loss.backward()
+            if params.clip_grad_norm > 0:
+                clip_grad_norm_(self.parameters["model"], params.clip_grad_norm)
+            optimizer.step()
+
+        # AMP optimization
+        elif params.nvidia_apex is True:
+            if (self.n_iter + 1) % params.accumulate_gradients == 0:
+                with apex.amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+                if params.clip_grad_norm > 0:
+                    clip_grad_norm_(
+                        apex.amp.master_params(self.optimizer), params.clip_grad_norm
+                    )
+                optimizer.step()
+                optimizer.zero_grad()
+            else:
+                with apex.amp.scale_loss(
+                    loss, optimizer, delay_unscale=True
+                ) as scaled_loss:
+                    scaled_loss.backward()
+
+        else:
+            if params.accumulate_gradients > 1:
+                loss = loss / params.accumulate_gradients
+            self.scaler.scale(loss).backward()
+
+            if (self.n_iter + 1) % params.accumulate_gradients == 0:
+                if params.clip_grad_norm > 0:
+                    self.scaler.unscale_(optimizer)
+                    clip_grad_norm_(self.parameters["model"], params.clip_grad_norm)
+                self.scaler.step(optimizer)
+                self.scaler.update()
+                optimizer.zero_grad()
+
+    def iter(self):
+        """
+        End of iteration.
+        """
+        self.n_iter += 1
+        self.n_total_iter += 1
+        self.print_stats()
+
+    def print_stats(self):
+        """
+        Print statistics about the training.
+        """
+        if self.n_total_iter % self.params.print_freq != 0:
+            return
+
+        s_total_eq = "- Total Eq: " + "{:.2e}".format(self.n_equations)
+        s_iter = "%7i - " % self.n_total_iter
+        # compute numeric stat means for logging
+        stat_means = {
+            k: float(np.mean(v))
+            for k, v in self.stats.items()
+            if isinstance(v, list) and len(v) > 0
+        }
+        s_stat = " || ".join(
+            ["{}: {:7.4f}".format(k.upper().replace("_", "-"), stat_means[k]) for k in stat_means]
+        )
+        # clear per-interval stats lists
+        for k in self.stats.keys():
+            if type(self.stats[k]) is list:
+                del self.stats[k][:]
+
+        # learning rates
+        s_lr = (" - LR: ") + " / ".join(
+            "{:.4e}".format(group["lr"]) for group in self.optimizer.param_groups
+        )
+
+        # processing speed
+        new_time = time.time()
+        diff = new_time - self.last_time
+        s_speed = "{:7.2f} equations/s - {:8.2f} words/s - ".format(
+            self.stats["processed_e"] * 1.0 / diff,
+            self.stats["processed_w"] * 1.0 / diff,
+        )
+        max_mem = torch.cuda.max_memory_allocated() / 1024 ** 2
+        s_mem = " MEM: {:.2f} MB - ".format(max_mem)
+        self.stats["processed_e"] = 0
+        self.stats["processed_w"] = 0
+        self.last_time = new_time
+        # log speed + stats + learning rate
+        log_line = s_iter + s_speed + s_mem + s_stat + s_lr + s_total_eq
+        logger.info(log_line)
+
+        # Structured JSON log (one line) for downstream parsing
+        try:
+            if getattr(self, 'run_log', None) is not None:
+                entry = {
+                    "ts": time.time(),
+                    "type": "iter_stats",
+                    "epoch": self.epoch,
+                    "n_total_iter": int(self.n_total_iter),
+                    "speed": s_speed.strip(),
+                    "mem_mb": float(max_mem),
+                    "lr": [float(g["lr"]) for g in self.optimizer.param_groups],
+                    "stats": stat_means,
+                }
+                import json as _json
+
+                try:
+                    self.run_log.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+                    self.run_log.flush()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def get_generation_statistics(self, task):
+
+        total_eqs = sum(
+            x.shape[0]
+            for x in self.infos_statistics[list(self.infos_statistics.keys())[0]]
+        )
+        logger.info("Generation statistics (to generate {} eqs):".format(total_eqs))
+
+        all_infos = defaultdict(list)
+        for info_type, infos in self.infos_statistics.items():
+            all_infos[info_type] = torch.cat(infos).tolist()
+            infos = [torch.bincount(info) for info in infos]
+            max_val = max([info.shape[0] for info in infos])
+            aggregated_infos = torch.cat(
+                [
+                    F.pad(info, (0, max_val - info.shape[0])).unsqueeze(-1)
+                    for info in infos
+                ],
+                -1,
+            ).sum(-1)
+            non_zeros = aggregated_infos.nonzero(as_tuple=True)[0]
+            vals = [
+                (
+                    non_zero.item(),
+                    "{:.2e}".format(
+                        (aggregated_infos[non_zero] / aggregated_infos.sum()).item()
+                    ),
+                )
+                for non_zero in non_zeros
+            ]
+            logger.info("{}: {}".format(info_type, vals))
+        all_infos = pd.DataFrame(all_infos)
+        g = sns.PairGrid(all_infos)
+        g.map_upper(sns.scatterplot)
+        g.map_lower(sns.kdeplot, fill=True)
+        g.map_diag(sns.histplot, kde=True)
+        plt.savefig(
+            os.path.join(self.params.dump_path, "statistics_{}.png".format(self.epoch))
+        )
+
+        str_errors = "Errors ({} eqs)\n ".format(total_eqs)
+        for error_type, count in self.errors_statistics.items():
+            str_errors += "{}: {}, ".format(error_type, count)
+        logger.info(str_errors[:-2])
+        self.errors_statistics = defaultdict(int)
+        self.infos_statistics = defaultdict(list)
+
+    def save_checkpoint(self, name, include_optimizer=True):
+        """
+        Save the model / checkpoints.
+        """
+        if not self.params.is_master:
+            return
+
+        path = os.path.join(self.params.dump_path, "%s.pth" % name)
+        logger.info("Saving %s to %s ..." % (name, path))
+
+        data = {
+            "epoch": self.epoch,
+            "n_total_iter": self.n_total_iter,
+            "best_metrics": self.best_metrics,
+            "best_stopping_criterion": self.best_stopping_criterion,
+            "params": {k: v for k, v in self.params.__dict__.items()},
+        }
+
+        for k, v in self.modules.items():
+            logger.warning(f"Saving {k} parameters ...")
+            data[k] = v.state_dict()
+
+        if include_optimizer:
+            logger.warning("Saving optimizer ...")
+            data["optimizer"] = self.optimizer.state_dict()
+            if self.scaler is not None:
+                data["scaler"] = self.scaler.state_dict()
+
+        torch.save(data, path)
+
+    def reload_checkpoint(self, path=None, root=None, requires_grad=True):
+        """
+        Reload a checkpoint if we find one.
+        """
+        if path is None:
+            path = "checkpoint.pth"
+
+        if self.params.reload_checkpoint != "":
+            # checkpoint_path = os.path.join(self.params.reload_checkpoint, path)
+            checkpoint_path = self.params.reload_checkpoint
+            assert os.path.isfile(checkpoint_path)
+        else:
+            if root is not None:
+                checkpoint_path = os.path.join(root, path)
+            else:
+                checkpoint_path = os.path.join(self.params.dump_path, path)
+            if not os.path.isfile(checkpoint_path):
+                logger.warning(
+                    "Checkpoint path does not exist, {}".format(checkpoint_path)
+                )
+                return
+
+        logger.warning(f"Reloading checkpoint from {checkpoint_path} ...")
+        data = torch.load(checkpoint_path, map_location="cpu")
+
+        # reload model parameters
+        for k, v in self.modules.items():
+            weights = data[k]
+            try:
+                weights = data[k]
+                v.load_state_dict(weights)
+            except RuntimeError:  # remove the 'module.'
+                weights = {name.partition(".")[2]: v for name, v in data[k].items()}
+                v.load_state_dict(weights)
+            v.requires_grad = requires_grad
+
+        logger.warning("Not reloading checkpoint optimizer.")
+        for group_id, param_group in enumerate(self.optimizer.param_groups):
+            if "num_updates" not in param_group:
+                logger.warning("No 'num_updates' for optimizer.")
+                continue
+            logger.warning("Reloading 'num_updates' and 'lr' for optimizer.")
+            param_group["num_updates"] = data["optimizer"]["param_groups"][
+                group_id
+            ]["num_updates"]
+            param_group["lr"] = self.optimizer.get_lr_for_step(
+                param_group["num_updates"]
+            )
+
+        if self.params.fp16 and not self.params.nvidia_apex:
+            logger.warning("Reloading gradient scaler ...")
+            self.scaler.load_state_dict(data["scaler"])
+        else:
+            assert self.scaler is None and "scaler" not in data
+
+        # reload main metrics
+        self.epoch = data["epoch"] + 1
+        self.n_total_iter = data["n_total_iter"]
+        self.best_metrics = data["best_metrics"]
+        self.best_stopping_criterion = data["best_stopping_criterion"]
+        logger.warning(
+            f"Checkpoint reloaded. Resuming at epoch {self.epoch} / iteration {self.n_total_iter} ..."
+        )
+
+    def reload_model(self, modules_to_load, path=None, requires_grad=True):
+        """
+        Reload a pretrained model.
+        """
+        if path is None:
+            if self.params.reload_model != "":
+                model_path = self.params.reload_model
+                assert os.path.isfile(model_path)
+        else:
+            model_path = path
+            assert os.path.isfile(model_path)
+
+        logger.warning(f"Reloading pretrained model from {model_path} ...")
+        
+        if not torch.cuda.is_available():
+            data = torch.load(model_path, map_location=torch.device('cpu'))
+        else:
+            data = torch.load(model_path)
+
+        # reload model parameters        
+        for k in modules_to_load:
+            v = self.modules[k]
+            weights = data[k]
+            try:
+                weights = data[k]
+                v.load_state_dict(weights)
+            except RuntimeError:  # remove the 'module.'
+                weights = {name.partition(".")[2]: v for name, v in data[k].items()}
+                v.load_state_dict(weights)
+
+            v.requires_grad = requires_grad
+
+    def save_periodic(self):
+        """
+        Save the models periodically.
+        """
+        if (
+            self.params.save_periodic > 0
+            and self.epoch % self.params.save_periodic == 0
+        ):
+            self.save_checkpoint("periodic-%i" % self.epoch)
+
+    def save_best_model(self, scores, prefix=None, suffix=None):
+        """
+        Save best models according to given validation metrics.
+        """
+        for metric, biggest in self.metrics:
+            _metric = metric
+            if prefix is not None:
+                _metric = prefix + "_" + _metric
+            if suffix is not None:
+                _metric = _metric + "_" + suffix
+            if _metric not in scores:
+                logger.warning('Metric "%s" not found in scores!' % _metric)
+                continue
+            factor = 1 if biggest else -1
+
+            if metric in self.best_metrics:
+                best_so_far = factor * self.best_metrics[metric]
+            else:
+                best_so_far = -np.inf
+            if factor * scores[_metric] > best_so_far:
+                self.best_metrics[metric] = scores[_metric]
+                logger.info("New best score for %s: %.6f" % (metric, scores[_metric]))
+                self.save_checkpoint("best-%s" % metric)
+
+    def end_epoch(self, scores):
+        """
+        End the epoch.
+        """
+        # stop if the stopping criterion has not improved after a certain number of epochs
+        if self.stopping_criterion is not None and (
+            self.params.is_master or not self.stopping_criterion[0].endswith("_mt_bleu")
+        ):
+            metric, biggest = self.stopping_criterion
+            assert metric in scores, metric
+            factor = 1 if biggest else -1
+            if factor * scores[metric] > factor * self.best_stopping_criterion:
+                self.best_stopping_criterion = scores[metric]
+                logger.info(
+                    "New best validation score: %f" % self.best_stopping_criterion
+                )
+                self.decrease_counts = 0
+            else:
+                logger.info(
+                    "Not a better validation score (%i / %i)."
+                    % (self.decrease_counts, self.decrease_counts_max)
+                )
+                self.decrease_counts += 1
+            if self.decrease_counts > self.decrease_counts_max:
+                logger.info(
+                    "Stopping criterion has been below its best value for more "
+                    "than %i epochs. Ending the experiment..."
+                    % self.decrease_counts_max
+                )
+                if self.params.multi_gpu and "SLURM_JOB_ID" in os.environ:
+                    os.system("scancel " + os.environ["SLURM_JOB_ID"])
+                exit()
+        # Compute and log per-epoch average loss for each task (if collected)
+        try:
+            if len(self.epoch_losses) > 0:
+                task_avgs = {}
+                for t, vals in list(self.epoch_losses.items()):
+                    if isinstance(vals, list) and len(vals) > 0:
+                        avg = float(np.mean(vals))
+                        task_avgs[t] = avg
+                        logger.info(f"[Epoch {self.epoch}] Average loss for {t}: {avg:.6f}")
+                        # append to epoch history for plotting
+                        try:
+                            self.epoch_history[t].append(avg)
+                        except Exception:
+                            pass
+                if len(task_avgs) > 0:
+                    overall = float(np.mean(list(task_avgs.values())))
+                    logger.info(f"[Epoch {self.epoch}] Overall average loss: {overall:.6f}")
+                # also write a structured epoch summary to the run log
+                try:
+                    if getattr(self, 'run_log', None) is not None:
+                        import json as _json
+
+                        epoch_entry = {
+                            "ts": time.time(),
+                            "type": "epoch_summary",
+                            "epoch": int(self.epoch),
+                            "task_avgs": task_avgs,
+                            "overall": float(overall),
+                            "n_total_iter": int(self.n_total_iter),
+                        }
+                        try:
+                            self.run_log.write(_json.dumps(epoch_entry, ensure_ascii=False) + "\n")
+                            self.run_log.flush()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                # save cumulative epoch loss plot
+                try:
+                    if getattr(self, 'epoch_history', None) is not None and getattr(self, 'params', None) is not None:
+                        plt.figure(figsize=(6, 4))
+                        for t, hist in self.epoch_history.items():
+                            plt.plot(range(len(hist)), hist, label=str(t))
+                        plt.xlabel('Epoch')
+                        plt.ylabel('Average Loss')
+                        plt.title('Per-task Epoch Average Loss')
+                        plt.legend(loc='upper right', fontsize='small')
+                        out_png = os.path.join(self.params.dump_path, 'epoch_loss_history.png')
+                        plt.tight_layout()
+                        plt.savefig(out_png)
+                        plt.close()
+                except Exception:
+                    logger.exception('Could not write epoch loss plot')
+        except Exception:
+            logger.exception("Failed computing average epoch loss")
+        # clear epoch losses for next epoch
+        self.epoch_losses = defaultdict(list)
+
+        self.save_checkpoint("checkpoint")
+        self.epoch += 1
+
+    def get_batch(self, task):
+        """
+        Return a training batch for a specific task.
+        """
+        batch, errors = next(self.dataloader[task])
+        
+        return batch, errors
+
+    def export_data(self, task):
+        """
+        Export data to the disk.
+        """
+        samples, _ = self.get_batch(task)
+        for info in samples["infos"]:
+            samples["infos"][info] = list(map(str, samples["infos"][info].tolist()))
+
+        def get_dictionary_slice(idx, dico):
+            x = {}
+            for d in dico:
+                x[d] = dico[d][idx]
+            return x
+
+        def float_list_to_str_lst(lst, float_precision):
+            for i in range(len(lst)):
+                for j in range(len(lst[i])):
+                    str_float = f"%.{float_precision}e" % lst[i][j]
+                    lst[i][j] = str_float
+            return lst
+
+        processed_e = len(samples)
+        for i in range(processed_e):
+            # prefix
+            outputs = {**get_dictionary_slice(i, samples["infos"])}
+            x_to_fit = samples["x_to_fit"][i].tolist()
+            y_to_fit = samples["y_to_fit"][i].tolist()
+            outputs["x_to_fit"] = float_list_to_str_lst(
+                x_to_fit, self.params.float_precision
+            )
+            outputs["y_to_fit"] = float_list_to_str_lst(
+                y_to_fit, self.params.float_precision
+            )
+
+            outputs["tree"] = samples["tree"][i].prefix()
+            outputs["skeleton_tree_encoded"] = samples["skeleton_tree_encoded"][i]
+
+            self.file_handler_prefix.write(json.dumps(outputs) + "\n")
+            self.file_handler_prefix.flush()
+
+        # number of processed sequences / words
+        self.n_equations += processed_e
+        self.total_samples += self.params.batch_size
+        self.stats["processed_e"] += len(samples)
+        
+    def enc_dec_step(self, task):
+        """
+        Encoding / decoding step.
+        """
+        params = self.params
+        embedder, encoder_y , mapper, decoder = (
+            self.modules["embedder"],
+            self.modules["encoder_y"],
+            self.modules["mapper"],
+            self.modules["decoder"]
+        )
+        embedder.train()
+        encoder_y.train()
+        mapper.train()
+        decoder.train()
+
+        env = self.env
+
+        samples, errors = self.get_batch(task)
+
+        if self.params.debug_train_statistics:
+            for info_type, info in samples["infos"].items():
+                self.infos_statistics[info_type].append(info)
+            for error_type, count in errors.items():
+                self.errors_statistics[error_type] += count 
+
+        x_to_fit = samples["x_to_fit"]
+        y_to_fit = samples["y_to_fit"]
+
+        x1 = []
+        for seq_id in range(len(x_to_fit)):
+            x1.append([])
+            for seq_l in range(len(x_to_fit[seq_id])):
+                x1[seq_id].append([x_to_fit[seq_id][seq_l], y_to_fit[seq_id][seq_l]])
+        
+        x1, len1 = embedder(x1) 
+
+        if self.params.use_skeleton:
+            x2, len2 = self.env.batch_equations(
+                self.env.word_to_idx(
+                    samples["skeleton_tree_encoded"], float_input=False
+                )
+            )
+        else:
+            x2, len2 = self.env.batch_equations(
+                self.env.word_to_idx(samples["tree_encoded"], float_input=False)
+            )
+
+        x2, len2 = to_cuda(x2, len2)
+
+        encoded_y = encoder_y("fwd", x=x1, lengths=len1, causal=False)
+
+        mapped_src_enc = mapper(encoded_y)
+
+        alen = torch.arange(params.max_src_len, dtype=torch.long, device=len2.device) #modified
+        pred_mask = (alen[:, None] < len2[None] - 1)  # do not predict anything given the last target word
+        
+        y = x2[1:].masked_select(pred_mask[:-1])
+        assert len(y) == (len2 - 1).sum().item()
+
+        decoded = decoder(
+            "fwd",
+            x=x2,
+            lengths=len2,
+            causal=True,
+            src_enc=mapped_src_enc,
+            src_len=len1,
+        )
+
+        scores , loss_pred = decoder(
+                "predict", tensor=decoded, pred_mask=pred_mask, y=y, get_scores=False
+            )
+
+        loss = loss_pred
+
+        self.stats[task].append(loss.item())
+        
+        # optimize
+        self.optimize(loss)
+
+        # number of processed sequences / words
+        self.inner_epoch += 1
+        self.n_equations += len2.size(0)
+        self.stats["processed_e"] += len2.size(0)
+        self.stats["processed_w"] += (len2 + len2 - 2).sum().item()
+
+        return encoded_y, samples, loss
+
+    def diffusion_step(self, task):
+        """
+        Diffusion step.
+        """
+        params = self.params
+
+        env = self.env
+
+        samples, errors = self.get_batch(task)
+
+        if self.params.debug_train_statistics:
+            for info_type, info in samples["infos"].items():
+                self.infos_statistics[info_type].append(info)
+            for error_type, count in errors.items():
+                self.errors_statistics[error_type] += count 
+                
+        # Branch: discrete categorical diffusion (legacy) OR latent stable diffusion
+        if getattr(self.params, 'use_stable_diffusion', False):
+            # stable latent diffusion training
+            encoder_f = self.modules.get('encoder_f', None)
+            stable_denoiser = self.modules.get('stable_denoiser', None)
+            mapper = self.modules.get('mapper', None)
+            decoder = self.modules.get('decoder', None)
+
+            if encoder_f is None or stable_denoiser is None or mapper is None or decoder is None:
+                raise ValueError('Missing modules for stable diffusion: encoder_f, stable_denoiser, mapper, decoder required')
+
+            # ensure frozen enc/dec are in eval as they are frozen
+            if getattr(self.params, 'freeze_encoder', True):
+                encoder_f.eval()
+            else:
+                encoder_f.train()
+            if getattr(self.params, 'freeze_decoder', True):
+                decoder.eval()
+            else:
+                decoder.train()
+
+            stable_denoiser.train()
+            mapper.train()
+
+            # prepare token sequence input for encoder_f (slen, bs)
+            if self.params.use_skeleton:
+                x_seq, len2 = self.env.batch_equations(
+                    self.env.word_to_idx(samples["skeleton_tree_encoded"], float_input=False)
+                )
+            else:
+                x_seq, len2 = self.env.batch_equations(
+                    self.env.word_to_idx(samples["tree_encoded"], float_input=False)
+                )
+
+            # move to device
+            x_seq, len2 = to_cuda(x_seq, len2)
+            device = x_seq.device
+
+            # env.batch_equations returns batch-first tensors (batch, seqlen).
+            # Transformer `fwd` expects (slen, bs). Transpose when the first
+            # dimension matches the batch-size (`len2`). This avoids wrong
+            # transposes when sequences are longer than the batch dimension.
+            try:
+                if x_seq.shape[0] == len2.size(0):
+                    x_seq = x_seq.transpose(0, 1).contiguous()
+                elif x_seq.shape[1] == len2.size(0):
+                    # already (slen, bs)
+                    pass
+                else:
+                    # unexpected shape; log for debugging but try to proceed
+                    logger.warning(f"Unexpected x_seq shape {x_seq.shape} vs lengths {len2.size()}; attempting safe transpose")
+                    x_seq = x_seq.transpose(0, 1).contiguous()
+            except Exception:
+                logger.exception("Could not transpose x_seq to match Transformer expected shape")
+
+            # encode whole-expression latent z0 (B, latent_dim)
+            with torch.no_grad() if getattr(self.params, 'freeze_encoder', True) else torch.enable_grad():
+                z0 = encoder_f('fwd', x=x_seq, lengths=len2, causal=False)
+
+            # project condition KV from z0
+            cond_kv = self.modules['condition_projector'](z0)
+
+            # sample noise and timestep
+            B = z0.size(0)
+            t = torch.randint(0, self.latent_diffusion.num_timesteps, (B,), device=device).long()
+            z_t, noise = self.latent_diffusion.q_sample(z0, t)
+
+            # predict noise
+            pred_noise = stable_denoiser(z_t, t, cond_kv)
+
+            mse_loss = F.mse_loss(pred_noise, noise)
+
+            total_loss = None
+            # optional decoder cross-entropy supervision
+            mode = getattr(self.params, 'stable_loss_mode', 'mse+crossent')
+            mse_w = float(getattr(self.params, 'stable_mse_weight', 1.0))
+            ce_w = float(getattr(self.params, 'stable_ce_weight', 1.0))
+
+            if mode in ('crossent-only', 'mse+crossent'):
+                # reconstruct z0_pred from predicted noise
+                a_t = self.latent_diffusion.sqrt_alphas_cumprod[t].unsqueeze(-1)
+                b_t = self.latent_diffusion.sqrt_one_minus_alphas_cumprod[t].unsqueeze(-1)
+                z0_pred = (z_t - b_t * pred_noise) / a_t
+
+                # map to decoder src_enc and compute CE loss (teacher-forcing)
+                src_enc_pred = mapper(z0_pred)
+                src_len_pred = torch.full((B,), src_enc_pred.size(1), dtype=torch.long, device=device)
+
+                # decoder target inputs: need slen, bs shape
+                x_target, len_target = x_seq, len2
+
+                # prepare pred_mask as in enc_dec_step
+                alen = torch.arange(self.params.max_src_len, dtype=torch.long, device=len_target.device)
+                pred_mask = (alen[:, None] < len_target[None] - 1)
+                y = x_target[1:].masked_select(pred_mask[:-1])
+
+                decoded = decoder(
+                    "fwd",
+                    x=x_target,
+                    lengths=len_target,
+                    causal=True,
+                    src_enc=src_enc_pred,
+                    src_len=src_len_pred,
+                )
+
+                scores, ce_loss = decoder(
+                    "predict", tensor=decoded, pred_mask=pred_mask, y=y, get_scores=False
+                )
+
+                if mode == 'crossent-only':
+                    total_loss = ce_loss
+                else:
+                    total_loss = mse_w * mse_loss + ce_w * ce_loss
+            else:
+                # mse-only
+                total_loss = mse_w * mse_loss
+
+            # record
+            self.stats[task].append(float(total_loss.item()))
+            self.epoch_losses[task].append(float(total_loss.item()))
+
+            # optimize
+            self.optimize(total_loss)
+
+            # bookkeeping
+            self.inner_epoch += 1
+            self.n_equations += len2.size(0)
+            self.stats["processed_e"] += len2.size(0)
+            self.stats["processed_w"] += (len2 + len2 - 2).sum().item()
+
+            return z0, samples, total_loss
+        else:
+            # legacy categorical diffusion path (unchanged)
+            snip_encoder, cond_proj, denoiser = (
+                self.modules["snip_encoder"],
+                self.modules["condition_projector"],
+                self.modules["conditional_transformer"]
+            )
+            
+            if snip_encoder is None or cond_proj is None or denoiser is None:
+                raise ValueError('Missing diffusion modules: need snip_encoder, condition_projector, conditional_transformer in modules when using diffusion')
+
+            snip_encoder.train()
+            cond_proj.train()
+            denoiser.train()
+            
+            # Determine device for temporary tensors
+            device = torch.device('cuda' if torch.cuda.is_available() and not params.cpu else 'cpu')
+
+            # encoded_y: (B, latent_dim)
+            encoded_y = snip_encoder.encode_from_samples(samples, env, device=device)
+
+            # Project to KV: (B, cond_seq_len, embed_dim)
+            cond_kv = cond_proj(encoded_y)
+
+            if self.params.use_skeleton:
+                x2, len2 = self.env.batch_equations(
+                    self.env.word_to_idx(
+                        samples["skeleton_tree_encoded"], float_input=False
+                    )
+                )
+            else:
+                x2, len2 = self.env.batch_equations(
+                    self.env.word_to_idx(samples["tree_encoded"], float_input=False)
+                )
+
+            x2, len2 = to_cuda(x2, len2)
+
+            # determine pad/eos ids from env if provided
+            pad_id = getattr(self.env, 'equation_word2id', {}).get('<PAD>', 8)
+            eos_id = getattr(self.env, 'equation_word2id', {}).get('<EOS>', 0)
+
+            # Defensive checks: ensure token indices fit within diffusion vocab
+            if x2.dtype != torch.long:
+                x2 = x2.long()
+
+            vocab_size = getattr(self.diffusion, "vocab_size", None)
+            if vocab_size is not None:
+                # note: x2 is batch-first (batch, seq)
+                max_id = int(x2.max().item())
+                min_id = int(x2.min().item())
+                if min_id < 0 or max_id >= vocab_size:
+                    print(f"[diffusion_step][ERROR] token id out of range: min={min_id} max={max_id} vocab_size={vocab_size}")
+                    # show a small sample of tokens for debugging
+                    try:
+                        sample_row = x2[0, : min(20, x2.size(1))].tolist()
+                    except Exception:
+                        sample_row = str(x2.flatten()[:20].cpu().numpy())
+                    print(f"[diffusion_step] sample tokens (first row): {sample_row}")
+                    print(f"[diffusion_step] pad_id={pad_id}, eos_id={eos_id}")
+                    raise ValueError(
+                        f"Token id out of range for diffusion.vocab_size={vocab_size}. "
+                        f"Ensure environment vocabulary (env.n_words) >= {max_id+1} or remap tokens."
+                    )
+
+            # compute diffusion loss: diffusion.compute_loss expects the denoiser model and a condition
+            loss = self.diffusion.compute_loss(denoiser, x2, cond_kv, pad_token_id=pad_id, eos_token_id=eos_id)
+
+            # record iteration loss for periodic stats
+            self.stats[task].append(loss.item())
+            # record per-epoch loss for later averaging
+            self.epoch_losses[task].append(loss.item())
+
+            # optimize
+            self.optimize(loss)
+
+            # number of processed sequences / words
+            self.inner_epoch += 1
+            self.n_equations += len2.size(0)
+            self.stats["processed_e"] += len2.size(0)
+            self.stats["processed_w"] += (len2 + len2 - 2).sum().item()
+
+            return encoded_y, samples, loss
