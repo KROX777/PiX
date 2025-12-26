@@ -2,7 +2,6 @@
 Single Test Script for PiX
 Users can input hypothesis IDs and run targeted tests.
 """
-
 import sys
 import os
 import time
@@ -28,8 +27,11 @@ os.makedirs(SHARED_LOG_DIR, exist_ok=True)
 # If not already set by a parent process, set shared log file for downstream modules (e.g., SR4MDL.search)
 os.environ.setdefault('PIX_LOG_FILE', SHARED_LOG_FILE)
 
-# Import SR4MDL.search early so it picks up PIX_LOG_FILE and initializes the shared logger
-from pix.methods.SR4MDL import search as _sr4mdl_search  # noqa: F401
+# # Import SR4MDL.search early so it picks up PIX_LOG_FILE and initializes the shared logger
+try:
+    from pix.methods.SR4MDL import search as _sr4mdl_search  # noqa: F401
+except Exception:
+    print("Warning: SR4MDL module not available, logging may be incomplete")
 
 # Set up console logging for immediate feedback; use the shared 'sr4mdl' logger tree to unify outputs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')

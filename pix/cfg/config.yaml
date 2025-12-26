@@ -21,6 +21,8 @@ max_rollout: 30
 time_limit: 3600
 verbose_level: 2
 
+use_hippylib: False
+
 # For SR
 use_snip: True
-snip_ckpt: 
+snip_ckpt: /home/ma-user/work/srbench/algorithms/snip/weights/snip-e2e-sr.pth

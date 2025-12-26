@@ -2,24 +2,23 @@ import pprint
 import numpy as np
 import time as time_module
 import random
+import os
+import sys
 from pix.hypotheses_tree import LightTree
 from pix.hypotheses_tree import HypothesesTree
 from pix.utils.others import *
 import sympy as sp
 from pix.utils.scipy_utils import optimize_with_timeout
-from pix.methods.SR4MDL.search import search as sr4mdl_search
+try:
+    from pix.methods.SR4MDL.search import search as sr4mdl_search
+except Exception:
+    print("Warning: SR4MDL module not available, sr4mdl_search will be None")
+    sr4mdl_search = None
 import copy
 import logging
 import torch
-try:
-    from pix.methods.SNIP.parsers import get_parser as snip_get_parser
-    from pix.methods.SNIP.symbolicregression.envs import build_env as snip_build_env
-    from pix.methods.SNIP.symbolicregression.model import build_modules as snip_build_modules
-except Exception:
-    # Delayed import fallback: if SNIP not available, we'll raise at runtime when called
-    snip_get_parser = None
-    snip_build_env = None
-    snip_build_modules = None
+from sklearn.cluster import KMeans
+from sklearn.metrics import pairwise_distances_argmin_min
 
 class EarlyStopException(Exception):
     """Custom exception to signal early stopping"""
@@ -81,42 +80,55 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     return binary_ops, unary_ops, leaf_ops
 
 
-def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cpu', max_input_dimension=10, top_k=10):
+def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda', max_input_dimension=2, top_k=10, batch_data=None):
     """Run SNIP E2E model on (x_arr, y_arr) and return best candidate expr and its MSE.
 
-    x_arr, y_arr: 1D numpy arrays
+    x_arr, y_arr: 1D numpy arrays (used for evaluation/refinement)
+    batch_data: Optional list of (x, y) tuples for generation. If None, uses (x_arr, y_arr).
     cfg: config object (may contain 'snip_ckpt' path or 'use_snip' flag)
     """
-    if snip_get_parser is None or snip_build_env is None or snip_build_modules is None:
-        raise ImportError("SNIP modules not available: cannot run SNIP symbolic regression")
+    # Ensure local SNIP package (pix/methods/SNIP/symbolicregression) is importable
+    snip_pkg_dir = os.path.join(os.path.dirname(__file__), 'SNIP')
+    if os.path.isdir(snip_pkg_dir) and snip_pkg_dir not in sys.path:
+        sys.path.insert(0, snip_pkg_dir)
+
+    try:
+        from pix.methods.SNIP.parsers import get_parser as snip_get_parser
+        from pix.methods.SNIP.symbolicregression.envs import build_env as snip_build_env
+        from pix.methods.SNIP.symbolicregression.model import build_modules as snip_build_modules
+        from pix.methods.SNIP.const_opt import refine as snip_refine
+    except Exception as e:
+        # Provide a clearer message including the attempted local SNIP path
+        raise ImportError(f"SNIP modules not available: cannot run SNIP symbolic regression (tried local SNIP dir: {snip_pkg_dir}). Original error: {e}")
 
     # build minimal params similar to quick_test_e2e
     params = snip_get_parser().parse_args([])
     params.use_diffusion = False
-    params.cpu = True
+    
     params.batch_size = 1
     params.eval_only = True
-    params.reload_model = ckpt_path if ckpt_path is not None else (cfg.get('snip_ckpt', '') if hasattr(cfg, 'get') else cfg.get('snip_ckpt', ''))
     params.reload_model_snipenc = ""
     params.reload_model_e2edec = ""
     params.max_input_dimension = max_input_dimension
-
+    
+    ckpt_path = cfg.get('snip_ckpt', None)
+    if ckpt_path is None:
+        raise RuntimeError('SNIP checkpoint path not provided in cfg["snip_ckpt"]')
     env = snip_build_env(params)
     modules = snip_build_modules(env, params)
 
-    # Try reload checkpoint weights if provided
-    if params.reload_model:
-        try:
-            ckpt = torch.load(params.reload_model, map_location=torch.device(device))
-            for k, v in modules.items():
-                if k in ckpt:
-                    try:
-                        v.load_state_dict(ckpt[k])
-                    except RuntimeError:
-                        stripped = {name.partition('.')[-1]: w for name, w in ckpt[k].items()}
-                        v.load_state_dict(stripped)
-        except Exception as e:
-            print("Warning: failed to load SNIP checkpoint:", e)
+    
+    try:
+        ckpt = torch.load(ckpt_path, map_location=torch.device(device))
+        for k, v in modules.items():
+            if k in ckpt:
+                try:
+                    v.load_state_dict(ckpt[k])
+                except RuntimeError:
+                    stripped = {name.partition('.')[-1]: w for name, w in ckpt[k].items()}
+                    v.load_state_dict(stripped)
+    except Exception as e:
+        print("Warning: failed to load SNIP checkpoint:", e)
 
     # Move modules to device and eval
     for m in modules.values():
@@ -131,10 +143,18 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cpu'
         raise RuntimeError('Missing SNIP modules (embedder/encoder/decoder/mapper)')
 
     # Prepare sequence in SNIP expected format: list of (x_arr_point, y_arr_point)
-    seq = []
-    for xi, yi in zip(x_arr, y_arr):
-        seq.append((np.array([xi], dtype=float), np.array([yi], dtype=float)))
-    batch_input = [seq]
+    if batch_data is not None:
+        batch_input = []
+        for bx, by in batch_data:
+            seq = []
+            for xi, yi in zip(bx, by):
+                seq.append((np.array([xi], dtype=float), np.array([yi], dtype=float)))
+            batch_input.append(seq)
+    else:
+        seq = []
+        for xi, yi in zip(x_arr, y_arr):
+            seq.append((np.array([xi], dtype=float), np.array([yi], dtype=float)))
+        batch_input = [seq]
 
     with torch.no_grad():
         x_enc, x_len = embedder(batch_input)
@@ -147,36 +167,82 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cpu'
     generations = generations.transpose(0, 1).transpose(1, 2).cpu().tolist()
     outputs = [
         list(
-            filter(
-                lambda x: x is not None,
-                [env.idx_to_infix(hyp[1:-1], is_float=False, str_array=False) for hyp in generations[i]],
-            )
+    # compute MSE per candidate (first batch only) using SNIP's refine/const-fitting and simplifier
+    # candidates = outputs[0] if len(outputs) > 0 else []
+    
+    # Flatten candidates from all batches
+    all_candidates = []
+    for batch_cands in outputs:
+        all_candidates.extend(batch_cands)
+    candidates = list(set(all_candidates))
+
+    if not candidates:
+        raise RuntimeError('SNIP produced no valid candidates')
         )
         for i in range(len(generations))
     ]
 
-    # compute MSE per candidate (first batch only)
+    # compute MSE per candidate (first batch only) using SNIP's refine/const-fitting and simplifier
     candidates = outputs[0] if len(outputs) > 0 else []
-    results = []
-    gamma_sym = sp.symbols('gamma')
-    locals_map = {'gamma': gamma_sym, 'sin': sp.sin, 'cos': sp.cos, 'tan': sp.tan, 'log': sp.log, 'exp': sp.exp, 'sqrt': sp.sqrt, 'pi': sp.pi, 'e': sp.E}
-    for cand in candidates:
+    if not candidates:
+        raise RuntimeError('SNIP produced no valid candidates')
+
+    X = np.array(x_arr).reshape(-1, 1)
+    y = np.array(y_arr).reshape(-1,)
+
+    # Try to run SNIP's refine (constant fitting + BFGS). Prefer using the env we built.
+    refined = None
+    try:
+        refined = snip_refine(env, X, y, candidates, verbose=False)
+    except Exception:
+        # try with a fresh env (may be heavier)
         try:
-            expr = sp.sympify(cand, locals=locals_map)
-            f = sp.lambdify(gamma_sym, expr, 'numpy')
-            pred = f(x_arr)
-            # ensure numeric array
-            pred = np.array(pred, dtype=float)
-            mask = np.isfinite(pred) & np.isfinite(y_arr)
+            fresh_params = snip_get_parser().parse_args([])
+            fresh_env = snip_build_env(fresh_params)
+            refined = snip_refine(fresh_env, X, y, candidates, verbose=False)
+        except Exception as e:
+            # fallback: attempt simple numeric evaluation via env.simplifier where possible
+            results = []
+            for cand in candidates:
+                try:
+                    skel, _ = env.generator.function_to_skeleton(cand, constants_with_idx=False)
+                    numfn = env.simplifier.tree_to_numexpr_fn(skel)
+                    pred = numfn(X)[:, 0]
+                    mask = np.isfinite(pred) & np.isfinite(y)
+                    if mask.sum() == 0:
+                        continue
+                    mse = float(np.mean((pred[mask] - y[mask]) ** 2))
+                    results.append((cand, mse))
+                except Exception:
+                    continue
+            if not results:
+                raise RuntimeError('SNIP produced no valid numeric candidates')
+            results = sorted(results, key=lambda t: t[1])
+            return results[0][0], results[0][1]
+
+    # refined is a list of dicts with 'predicted_tree' entries
+    results = []
+    for cand in refined:
+        try:
+            tree = cand.get('predicted_tree', None)
+            if tree is None:
+                continue
+            numfn = env.simplifier.tree_to_numexpr_fn(tree)
+            pred = numfn(X)[:, 0]
+            mask = np.isfinite(pred) & np.isfinite(y)
             if mask.sum() == 0:
                 continue
-            mse = float(np.mean((pred[mask] - y_arr[mask])**2))
-            results.append((cand, mse))
+            mse = float(np.mean((pred[mask] - y[mask]) ** 2))
+            try:
+                infix = tree.infix()
+            except Exception:
+                infix = str(tree)
+            results.append((infix, mse))
         except Exception:
             continue
 
     if not results:
-        raise RuntimeError('SNIP produced no valid numeric candidates')
+        raise RuntimeError('SNIP produced no valid numeric candidates after refinement')
 
     results = sorted(results, key=lambda t: t[1])
     return results[0][0], results[0][1]
@@ -262,7 +328,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 gt_func = sp.lambdify(gamma_sym, gt_expr, 'numpy')
                 gt = gt_func(gamma)
 
-                t_min, t_max = 81, 85
+                t_min, t_max = 81, 90
                 Fx = 0
         
                 # Bind the imported search function into a local name so the inner obj closure
@@ -270,97 +336,163 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 # scoping issues where a name might be considered unbound in closures.
                 sr_search_fn = sr4mdl_search
                 
-                use_hippylib = False
+                use_hippylib = cfg.get('use_hippylib', False)
                 
                 # if use_hippylib:
                 #     print(f"[BFSearch] Using HIPPYLIB solver for μ estimation")
                 #     gamma_reg = cfg.problem.get('gamma_regularization', 1e-6)   # wtf?
                 #     maxiter_adj = cfg.get('adjoint_maxiter', 20)
 
-                def obj(x):
-                    # x is Fy (external force in y-direction)
-                    if use_hippylib:
-                        raise NotImplementedError("hippylib disabled")
-                        # # Use hippylib FEniCS-based solver
-                        # mu = run_solver_hippylib(
-                        #     tree.calculator.args_data,
-                        #     t_min=t_min,
-                        #     t_max=t_max,
-                        #     dx=tree.calculator.dx,
-                        #     dy=tree.calculator.dy,
-                        #     dt=tree.calculator.dt,
-                        #     gamma=gamma_reg,
-                        #     maxiter=maxiter_adj,
-                        #     gtol=1e-5,
-                        #     gt=gt,
-                        #     verbose=cfg.verbose,
-                        #     Fx=Fx,
-                        #     Fy=x
-                        # )
-                    else:
-                        mu, g_est = run_solver(
-                            tree.calculator.args_data, 
-                            t_min=t_min, 
-                            t_max=t_max, 
-                            dx=tree.calculator.dx, 
-                            dy=tree.calculator.dy, 
-                            dt=tree.calculator.dt,
-                            gt=gt,
-                            Fx=Fx,
-                            Fy=0,       # Fy=0 when estimate_g_global=True
-                            estimate_g_global=True
-                        )
+                # def obj(x):
+                #     # x is Fy (external force in y-direction)
+                #     if use_hippylib:
+                #         raise NotImplementedError("hippylib disabled")
+                #         # # Use hippylib FEniCS-based solver
+                #         # mu = run_solver_hippylib(
+                #         #     tree.calculator.args_data,
+                #         #     t_min=t_min,
+                #         #     t_max=t_max,
+                #         #     dx=tree.calculator.dx,
+                #         #     dy=tree.calculator.dy,
+                #         #     dt=tree.calculator.dt,
+                #         #     gamma=gamma_reg,
+                #         #     maxiter=maxiter_adj,
+                #         #     gtol=1e-5,
+                #         #     gt=gt,
+                #         #     verbose=cfg.verbose,
+                #         #     Fx=Fx,
+                #         #     Fy=x
+                #         # )
+                #     else:
+                #         mu, g_est = run_solver(
+                #             tree.calculator.args_data, 
+                #             t_min=t_min, 
+                #             t_max=t_max, 
+                #             dx=tree.calculator.dx, 
+                #             dy=tree.calculator.dy, 
+                #             dt=tree.calculator.dt,
+                #             gt=gt,
+                #             Fx=Fx,
+                #             Fy=0,       # Fy=0 when estimate_g_global=True
+                #             estimate_g_global=True
+                #         )
                     
-                    sl = slice(t_min, t_max + 1)
-                    mu_sub = mu[:, :, sl, 0]
-                    print(mu_sub)
-                    print(g_est)
+                #     sl = slice(t_min, t_max + 1)
+                #     mu_sub = mu[:, :, sl, 0]
+                #     print(mu_sub)
+                #     print(g_est)
                     
-                    gamma_flat = gamma[:, :, sl].flatten()
-                    mu_flat = mu_sub.flatten()
-                    # drop non-finite pairs, then sort by gamma
-                    mask = np.isfinite(gamma_flat) & np.isfinite(mu_flat)
-                    gamma_flat = gamma_flat[mask]
-                    mu_flat = mu_flat[mask]
-                    order = np.argsort(gamma_flat)
-                    gamma_sorted = gamma_flat[order]
-                    mu_sorted = mu_flat[order]
-                    calculator_copy = copy.deepcopy(tree.calculator)
-                    # Optionally run SNIP-based symbolic regression (from SNIP/quick_test_e2e)
-                    use_snip = False
-                    try:
-                        # prefer explicit config flag if present
-                        if hasattr(cfg, 'get'):
-                            use_snip = bool(cfg.get('use_snip', False))
-                        elif 'use_snip' in cfg:
-                            use_snip = bool(cfg['use_snip'])
-                    except Exception:
-                        use_snip = False
+                #     gamma_flat = gamma[:, :, sl].flatten()
+                #     mu_flat = mu_sub.flatten()
+                #     # drop non-finite pairs, then sort by gamma
+                #     mask = np.isfinite(gamma_flat) & np.isfinite(mu_flat)
+                #     gamma_flat = gamma_flat[mask]
+                #     mu_flat = mu_flat[mask]
+                #     order = np.argsort(gamma_flat)
+                #     gamma_sorted = gamma_flat[order]
+                #     mu_sorted = mu_flat[order]
+                #     calculator_copy = copy.deepcopy(tree.calculator)
+                #     # Optionally run SNIP-based symbolic regression (from SNIP/quick_test_e2e)
+                #     use_snip = cfg.get('use_snip', False)
 
-                    if use_snip:
-                        # Run SNIP model on the (gamma_sorted, mu_sorted) dataset
-                        try:
-                            best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg)
-                            print("SNIP best:", best_expr, best_loss)
-                            return best_loss
-                        except Exception as e:
-                            print("SNIP run failed, falling back to sr4mdl_search:", e)
+                #     if use_snip:
+                #         best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg)
+                #         print("SNIP Best:", best_expr, best_loss)
+                #         return best_loss
 
+                #     else:
+                #         expr, loss = sr_search_fn(calculator=calculator_copy, 
+                #                                 y_name='mu', 
+                #                                 x_name=['gamma'], 
+                #                                 other_params_name=None,
+                #                                 deci_list_len=len(deci_list),
+                #                                 X_override={'gamma': gamma_sorted}, 
+                #                                 y_override=mu_sorted, 
+                #                                 mode="inverse", 
+                #                                 n_iter=100, 
+                #                                 is_final_optim=True,
+                #                                 log_every_n_iters=25)
+                #         print("SR4MDL Best: ", expr, loss)
+                #         return loss
+
+                # obj(0)  # Testing g=0
+                
+                if use_hippylib:
+                    raise NotImplementedError("hippylib disabled")
+                else:
+                    mu, g_est = run_solver(
+                        tree.calculator.args_data, 
+                        t_min=t_min, 
+                        t_max=t_max, 
+                        dx=tree.calculator.dx, 
+                        dy=tree.calculator.dy, 
+                        dt=tree.calculator.dt,
+                        gt=gt,
+                        Fx=Fx,
+                        Fy=0,       # Fy=0 when estimate_g_global=True
+                        estimate_g_global=True
+                    )
+                
+                sl = slice(t_min, t_max + 1)
+                mu_sub = mu[:, :, sl, 0]
+                print(mu_sub)
+                print(g_est)
+                
+                gamma_flat = gamma[:, :, sl].flatten()
+                mu_flat = mu_sub.flatten()
+                # drop non-finite pairs, then sort by gamma
+                batch_data = None
+                if len(mu_sorted) > 200:
+                    k = 200
+                    kmeans = KMeans(n_clusters=k, max_iter=200, random_state=42)
+                    kmeans.fit(mu_sorted.reshape(-1, 1))
+                    
+                    snip_mode = cfg.get('snip_mode', 'centroid')
+                    if snip_mode == 'random':
+                        batch_data = []
+                        labels = kmeans.labels_
+                        for _ in range(50):
+                            indices = []
+                            for i in range(k):
+                                cluster_indices = np.where(labels == i)[0]
+                                if len(cluster_indices) > 0:
+                                    indices.append(np.random.choice(cluster_indices))
+                            indices = np.array(indices)
+                            g_sub = gamma_sorted[indices]
+                            m_sub = mu_sorted[indices]
+                            order_sub = np.argsort(g_sub)
+                            batch_data.append((g_sub[order_sub], m_sub[order_sub]))
+
+                    centroids = kmeans.cluster_centers_
+                    closest, _ = pairwise_distances_argmin_min(centroids, mu_sorted.reshape(-1, 1))
+                    gamma_sorted = gamma_sorted[closest]
+                    mu_sorted = mu_sorted[closest]
+                    order = np.argsort(gamma_sorted)
+                    gamma_sorted = gamma_sorted[order]
+                    mu_sorted = mu_sorted[order]
+                
+                calculator_copy = copy.deepcopy(tree.calculator)
+                # Optionally run SNIP-based symbolic regression (from SNIP/quick_test_e2e)
+                use_snip = cfg.get('use_snip', False)
+
+                if use_snip:
+                    best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg, max_input_dimension=1, batch_data=batch_data)
+                    print("SNIP Best:", best_expr, best_loss)
+                    return best_loss
+
+                else:
                     expr, loss = sr_search_fn(calculator=calculator_copy, 
-                                               y_name='mu', 
-                                               x_name=['gamma'], 
-                                               other_params_name=None,
-                                               deci_list_len=len(deci_list),
-                                               X_override={'gamma': gamma_sorted}, 
-                                               y_override=mu_sorted, 
-                                               mode="inverse", 
-                                               n_iter=100, 
-                                               is_final_optim=True,
-                                               log_every_n_iters=25)
-                    print(expr, loss)
-                    return loss
-
-                obj(0)  # Testing g=0
+                                            y_name='mu', 
+                                            x_name=['gamma'], 
+                                            other_params_name=None,
+                                            deci_list_len=len(deci_list),
+                                            X_override={'gamma': gamma_sorted}, 
+                                            y_override=mu_sorted, 
+                                            mode="inverse", 
+                                            n_iter=100, 
+                                            is_final_optim=True,
+                                            log_every_n_iters=25)
+                    print("SR4MDL Best: ", expr, loss)
                 
                 c = input("Press Enter...")
 
