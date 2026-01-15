@@ -80,11 +80,12 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     return binary_ops, unary_ops, leaf_ops
 
 
-def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda', max_input_dimension=2, top_k=10, batch_data=None):
-    """Run SNIP E2E model on (x_arr, y_arr) and return best candidate expr and its MSE.
+def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda', top_k=10, batch_data=None):
+    """Run SNIP E2E model with LSO genetic algorithm optimization.
 
     x_arr, y_arr: 1D numpy arrays (used for evaluation/refinement)
-    batch_data: Optional list of (x, y) tuples for generation. If None, uses (x_arr, y_arr).
+    batch_data: Optional list of n groups, each with (x, y) tuples for generation. 
+                These n groups will be used as initial population for LSO genetic algorithm.
     cfg: config object (may contain 'snip_ckpt' path or 'use_snip' flag)
     """
     # Ensure local SNIP package (pix/methods/SNIP/symbolicregression) is importable
@@ -96,156 +97,159 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda
         from pix.methods.SNIP.parsers import get_parser as snip_get_parser
         from pix.methods.SNIP.symbolicregression.envs import build_env as snip_build_env
         from pix.methods.SNIP.symbolicregression.model import build_modules as snip_build_modules
-        from pix.methods.SNIP.const_opt import refine as snip_refine
+        from pix.methods.SNIP.model import SNIPSymbolicRegressor
+        from pix.methods.SNIP.LSO_fit import lso_fit, LSOFitNeverGrad
+        from pix.methods.SNIP.symbolicregression.model.model_wrapper import ModelWrapper
+        import pix.methods.SNIP.symbolicregression.model.utils_wrapper as utils_wrapper
+        from collections import defaultdict
     except Exception as e:
-        # Provide a clearer message including the attempted local SNIP path
         raise ImportError(f"SNIP modules not available: cannot run SNIP symbolic regression (tried local SNIP dir: {snip_pkg_dir}). Original error: {e}")
 
-    # build minimal params similar to quick_test_e2e
-    params = snip_get_parser().parse_args([])
+    # Build params similar to LSO_eval
+    parser = snip_get_parser()
+    params = parser.parse_args([])
     params.use_diffusion = False
-    
+    params.cpu = (device == 'cpu')
     params.batch_size = 1
     params.eval_only = True
     params.reload_model_snipenc = ""
     params.reload_model_e2edec = ""
-    params.max_input_dimension = max_input_dimension
+    params.max_input_dimension = 10
+    params.device = torch.device(device)
+    
+    # LSO optimizer params from cfg or defaults
+    params.lso_optimizer = cfg.get('lso_optimizer', 'gwo')
+    params.lso_pop_size = cfg.get('lso_pop_size', 50)
+    params.lso_max_iteration = cfg.get('lso_max_iteration', 80)
+    params.lso_stop_r2 = cfg.get('lso_stop_r2', 0.99)
+    params.beam_size = cfg.get('beam_size', 10)
+    params.n_trees_to_refine = params.beam_size
+    params.max_input_points = cfg.get('max_input_points', 200)
+    params.rescale = cfg.get('rescale', True)
     
     ckpt_path = cfg.get('snip_ckpt', None)
     if ckpt_path is None:
         raise RuntimeError('SNIP checkpoint path not provided in cfg["snip_ckpt"]')
+    
+    # Build env and modules
     env = snip_build_env(params)
     modules = snip_build_modules(env, params)
 
-    
-    try:
-        ckpt = torch.load(ckpt_path, map_location=torch.device(device))
+    # Reload checkpoint similar to LSO_eval.reload_model
+    if os.path.isfile(ckpt_path):
+        data = torch.load(ckpt_path, map_location=params.device)
         for k, v in modules.items():
-            if k in ckpt:
+            if k in data:
                 try:
-                    v.load_state_dict(ckpt[k])
-                except RuntimeError:
-                    stripped = {name.partition('.')[-1]: w for name, w in ckpt[k].items()}
-                    v.load_state_dict(stripped)
-    except Exception as e:
-        print("Warning: failed to load SNIP checkpoint:", e)
+                    weights = data[k]
+                    v.load_state_dict(weights)
+                    print(f"Loaded weights for module: {k}")
+                except RuntimeError as original_error:
+                    # try stripping 'module.' prefix
+                    try:
+                        stripped = {name.partition('.')[-1]: w for name, w in data[k].items()}
+                        v.load_state_dict(stripped)
+                        print(f"Loaded (stripped) weights for module: {k}")
+                    except RuntimeError:
+                         # If stripping also fails, raise the original error
+                         print(f"Failed to load weights for {k}: {original_error}")
+                         raise original_error
+                v.requires_grad = False
+    else:
+        raise RuntimeError(f'SNIP checkpoint not found: {ckpt_path}')
 
     # Move modules to device and eval
     for m in modules.values():
-        m.to(torch.device(device))
+        m.to(params.device)
         m.eval()
 
-    embedder = modules.get('embedder')
-    encoder = modules.get('encoder_y')
-    decoder = modules.get('decoder')
-    mapper = modules.get('mapper')
-    if embedder is None or encoder is None or decoder is None or mapper is None:
-        raise RuntimeError('Missing SNIP modules (embedder/encoder/decoder/mapper)')
+    # Create SNIPSymbolicRegressor model wrapper
+    model = SNIPSymbolicRegressor(params=params, env=env, modules=modules)
+    model.to(params.device)
 
-    # Prepare sequence in SNIP expected format: list of (x_arr_point, y_arr_point)
+    # Prepare data: n groups of (x, y) samples for initial population generation
     if batch_data is not None:
-        batch_input = []
+        # batch_data is list of (x_i, y_i) tuples, each representing a group
+        X_list = []
+        Y_list = []
         for bx, by in batch_data:
-            seq = []
-            for xi, yi in zip(bx, by):
-                seq.append((np.array([xi], dtype=float), np.array([yi], dtype=float)))
-            batch_input.append(seq)
+            X_list.append(np.array(bx).reshape(-1, 1))
+            Y_list.append(np.array(by).reshape(-1, 1))
     else:
-        seq = []
-        for xi, yi in zip(x_arr, y_arr):
-            seq.append((np.array([xi], dtype=float), np.array([yi], dtype=float)))
-        batch_input = [seq]
+        # Single group fallback
+        X_list = [np.array(x_arr).reshape(-1, 1)]
+        Y_list = [np.array(y_arr).reshape(-1, 1)]
 
-    with torch.no_grad():
-        x_enc, x_len = embedder(batch_input)
-        z_rep = encoder('fwd', x=x_enc, lengths=x_len, causal=False)
-        src_enc = mapper(z_rep)
-        generations, gen_len = decoder.generate_from_latent(src_enc, max_len=200)
+    # Scale X similar to LSO_eval
+    scaler = utils_wrapper.StandardScaler() if params.rescale else None
+    scale_params = {}
+    if scaler is not None:
+        scaled_X = []
+        for i, x in enumerate(X_list):
+            scaled_X.append(scaler.fit_transform(x))
+            scale_params[i] = scaler.get_params()
+    else:
+        scaled_X = X_list
 
-    # Convert tokens to infix strings similar to quick_test_e2e
-    generations = generations.unsqueeze(-1).view(generations.shape[0], generations.shape[1], 1)
-    generations = generations.transpose(0, 1).transpose(1, 2).cpu().tolist()
-    outputs = [
-        list(
-    # compute MSE per candidate (first batch only) using SNIP's refine/const-fitting and simplifier
-    # candidates = outputs[0] if len(outputs) > 0 else []
+    # Prepare sample_to_learn structure for LSO
+    # For simplicity, use first group for fitting (or average/concatenate if needed)
+    X_scaled_to_fit = scaled_X[0]
+    Y_scaled_to_fit = Y_list[0]
+    x_to_fit = X_list[0]
+    y_to_fit = Y_list[0]
     
-    # Flatten candidates from all batches
-    all_candidates = []
-    for batch_cands in outputs:
-        all_candidates.extend(batch_cands)
-    candidates = list(set(all_candidates))
+    # Split into train/test if needed (here we use all for fitting)
+    sample_to_learn = {
+        'X_scaled_to_fit': [X_scaled_to_fit],
+        'Y_scaled_to_fit': [Y_scaled_to_fit],
+        'x_to_fit': [x_to_fit],
+        'y_to_fit': [y_to_fit],
+        'x_to_predict': [x_to_fit],  # use same for prediction in this context
+        'y_to_predict': [y_to_fit]
+    }
 
-    if not candidates:
-        raise RuntimeError('SNIP produced no valid candidates')
-        )
-        for i in range(len(generations))
-    ]
+    batch_results = defaultdict(list)
+    bag_number = 1
 
-    # compute MSE per candidate (first batch only) using SNIP's refine/const-fitting and simplifier
-    candidates = outputs[0] if len(outputs) > 0 else []
-    if not candidates:
-        raise RuntimeError('SNIP produced no valid candidates')
+    # Run LSO optimization (genetic algorithm)
+    with torch.no_grad():
+        if params.lso_optimizer == "gwo":
+            batch_results = lso_fit(sample_to_learn, env, params, model, batch_results, bag_number)
+        else:
+            opt_LSO = LSOFitNeverGrad(env, params, model, sample_to_learn, batch_results, bag_number)
+            batch_results = opt_LSO.fit_func()
 
-    X = np.array(x_arr).reshape(-1, 1)
-    y = np.array(y_arr).reshape(-1,)
-
-    # Try to run SNIP's refine (constant fitting + BFGS). Prefer using the env we built.
-    refined = None
-    try:
-        refined = snip_refine(env, X, y, candidates, verbose=False)
-    except Exception:
-        # try with a fresh env (may be heavier)
-        try:
-            fresh_params = snip_get_parser().parse_args([])
-            fresh_env = snip_build_env(fresh_params)
-            refined = snip_refine(fresh_env, X, y, candidates, verbose=False)
-        except Exception as e:
-            # fallback: attempt simple numeric evaluation via env.simplifier where possible
-            results = []
-            for cand in candidates:
-                try:
-                    skel, _ = env.generator.function_to_skeleton(cand, constants_with_idx=False)
-                    numfn = env.simplifier.tree_to_numexpr_fn(skel)
-                    pred = numfn(X)[:, 0]
-                    mask = np.isfinite(pred) & np.isfinite(y)
-                    if mask.sum() == 0:
-                        continue
-                    mse = float(np.mean((pred[mask] - y[mask]) ** 2))
-                    results.append((cand, mse))
-                except Exception:
-                    continue
-            if not results:
-                raise RuntimeError('SNIP produced no valid numeric candidates')
-            results = sorted(results, key=lambda t: t[1])
-            return results[0][0], results[0][1]
-
-    # refined is a list of dicts with 'predicted_tree' entries
-    results = []
-    for cand in refined:
-        try:
-            tree = cand.get('predicted_tree', None)
-            if tree is None:
-                continue
-            numfn = env.simplifier.tree_to_numexpr_fn(tree)
-            pred = numfn(X)[:, 0]
-            mask = np.isfinite(pred) & np.isfinite(y)
-            if mask.sum() == 0:
-                continue
-            mse = float(np.mean((pred[mask] - y[mask]) ** 2))
+    # Extract best result
+    if 'r2_zero_final_fit' in batch_results and len(batch_results['r2_zero_final_fit']) > 0:
+        best_idx = 0  # LSO returns best in first position typically
+        r2_final = batch_results['r2_zero_final_fit'][best_idx]
+        
+        # Get predicted tree
+        if 'direct_predicted_tree' in batch_results:
+            predicted_tree = batch_results['direct_predicted_tree'][best_idx]
             try:
-                infix = tree.infix()
+                if hasattr(predicted_tree, 'infix'):
+                    best_expr = predicted_tree.infix()
+                else:
+                    best_expr = str(predicted_tree)
+                # Replace operator names for readability
+                replace_ops = {"add": "+", "mul": "*", "sub": "-", "pow": "**", "inv": "1/"}
+                for old, new in replace_ops.items():
+                    best_expr = best_expr.replace(old, new)
             except Exception:
-                infix = str(tree)
-            results.append((infix, mse))
-        except Exception:
-            continue
-
-    if not results:
-        raise RuntimeError('SNIP produced no valid numeric candidates after refinement')
-
-    results = sorted(results, key=lambda t: t[1])
-    return results[0][0], results[0][1]
+                best_expr = str(predicted_tree)
+        else:
+            best_expr = "Unknown"
+        
+        # Compute MSE from r2 (approximate if needed)
+        # MSE = (1 - R2) * var(y) for normalized case
+        y_var = np.var(y_to_fit)
+        best_mse = (1.0 - r2_final) * y_var if r2_final < 1.0 else 1e-10
+        
+        print(f"LSO optimization complete: R2={r2_final:.6f}, MSE~{best_mse:.6e}")
+        return best_expr, best_mse
+    else:
+        raise RuntimeError('LSO optimization failed to produce valid results')
 
 def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, verbose=True, preset=None, allowed_functions=None, method="directxy"):
     tree = HypothesesTree(cfg, root_dir)
@@ -303,6 +307,25 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                     if "init" in c:
                         init_params[i] += c["init"]
         sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
+        if verbose:
+            print('Loss', sol['fun'])
+        ret_sol = dict()
+        ret_sol['train_loss'] = sol['fun']
+        ret_sol['valid_loss'] = valid_loss_func(sol['x'])
+        ret_sol['deci_list'] = deci_list
+        params_name = list(map(str, tree.calculator.sp_unknown_quantities.keys())) #must return str (instead of sympy symbol), for pprint.
+        ret_sol['params'] = dict(zip(params_name, sol['x']))
+        ret_sol['time'] = sol['time']
+        ret_sol['nit'] = sol['nit']
+        ret_sol['status'] = sol['status']
+        if 'stop_reason' in sol:
+            ret_sol['stop_reason'] = sol['stop_reason']
+
+        if ret_sol['status'] == "Success": # record detailed infos of train loss.
+            ret_sol['train_mse_list'] = mse_list_train(sol['x'])
+            ret_sol['valid_mse_list'] = mse_list_valid(sol['x'])
+
+        return ret_sol
     else:
         params_name = list(tree.calculator.sp_unknown_quantities.keys())
         tree.calculator.upd_local_dict()
@@ -440,17 +463,33 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 
                 gamma_flat = gamma[:, :, sl].flatten()
                 mu_flat = mu_sub.flatten()
-                # drop non-finite pairs, then sort by gamma
+                
+                # Drop non-finite pairs, then sort by gamma
+                mask = np.isfinite(gamma_flat) & np.isfinite(mu_flat)
+                gamma_flat = gamma_flat[mask]
+                mu_flat = mu_flat[mask]
+                order = np.argsort(gamma_flat)
+                gamma_sorted = gamma_flat[order]
+                mu_sorted = mu_flat[order]
+                
                 batch_data = None
                 if len(mu_sorted) > 200:
                     k = 200
                     kmeans = KMeans(n_clusters=k, max_iter=200, random_state=42)
                     kmeans.fit(mu_sorted.reshape(-1, 1))
                     
-                    snip_mode = cfg.get('snip_mode', 'centroid')
+                    # Compute cluster size statistics
+                    labels = kmeans.labels_
+                    unique_labels, cluster_sizes = np.unique(labels, return_counts=True)
+                    print(f"KMeans clustering: {len(mu_sorted)} points -> {k} clusters")
+                    print(f"  Cluster sizes - max: {cluster_sizes.max()}, min: {cluster_sizes.min()}, "
+                          f"avg: {cluster_sizes.mean():.2f}, std: {cluster_sizes.std():.2f}")
+                    
+                    # c = input("Press Enter to continue...")
+                    snip_mode = cfg.get('snip_mode', 'random')
                     if snip_mode == 'random':
+                        print(f"  Using random sampling mode: generating 50 batches")
                         batch_data = []
-                        labels = kmeans.labels_
                         for _ in range(50):
                             indices = []
                             for i in range(k):
@@ -476,7 +515,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 use_snip = cfg.get('use_snip', False)
 
                 if use_snip:
-                    best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg, max_input_dimension=1, batch_data=batch_data)
+                    best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg, batch_data=batch_data)
                     print("SNIP Best:", best_expr, best_loss)
                     return best_loss
 
@@ -527,26 +566,7 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
             # Use globally imported sr4mdl_search to avoid creating a local binding
             sr4mdl_search(tree.calculator, y, x_vars, params_name, len(deci_list))
     return
-    if verbose:
-        print('Loss', sol['fun'])
     
-    ret_sol = dict()
-    ret_sol['train_loss'] = sol['fun']
-    ret_sol['valid_loss'] = valid_loss_func(sol['x'])
-    ret_sol['deci_list'] = deci_list
-    params_name = list(map(str, tree.calculator.sp_unknown_quantities.keys())) #must return str (instead of sympy symbol), for pprint.
-    ret_sol['params'] = dict(zip(params_name, sol['x']))
-    ret_sol['time'] = sol['time']
-    ret_sol['nit'] = sol['nit']
-    ret_sol['status'] = sol['status']
-    if 'stop_reason' in sol:
-        ret_sol['stop_reason'] = sol['stop_reason']
-
-    if ret_sol['status'] == "Success": # record detailed infos of train loss.
-        ret_sol['train_mse_list'] = mse_list_train(sol['x'])
-        ret_sol['valid_mse_list'] = mse_list_valid(sol['x'])
-
-    return ret_sol
 
 def para_test(cfg, root_dir, deci_lists, n_jobs=10, time_limit=None, preset=None, allowed_functions=None):
     n_parts = 10

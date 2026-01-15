@@ -45,7 +45,7 @@ def main():
     params.cpu = True  # run on CPU for quick test
     params.batch_size = 1
     params.eval_only = True
-    params.reload_model = "./weights/snip-e2e-sr.pth"  # path to your checkpoint
+    params.reload_model = "/sfs/xcy/snip-e2e-sr.pth"  # path to your checkpoint
     params.reload_model_snipenc = ""  # avoid double-loading
     params.reload_model_e2edec = ""
     # Match training hyperparameters used to produce the checkpoint
