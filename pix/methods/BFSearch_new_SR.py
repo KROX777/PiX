@@ -80,7 +80,7 @@ def parse_custom_operators(custom_binary_ops='', custom_unary_ops='', custom_lea
     return binary_ops, unary_ops, leaf_ops
 
 
-def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda', top_k=10, batch_data=None):
+def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None, top_k=10, batch_data=None):
     """Run SNIP E2E model with LSO genetic algorithm optimization.
 
     x_arr, y_arr: 1D numpy arrays (used for evaluation/refinement)
@@ -104,6 +104,10 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda
         from collections import defaultdict
     except Exception as e:
         raise ImportError(f"SNIP modules not available: cannot run SNIP symbolic regression (tried local SNIP dir: {snip_pkg_dir}). Original error: {e}")
+
+    # Determine device: default to CPU if CUDA not available
+    if device is None:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Build params similar to LSO_eval
     parser = snip_get_parser()
@@ -137,7 +141,7 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda
 
     # Reload checkpoint similar to LSO_eval.reload_model
     if os.path.isfile(ckpt_path):
-        data = torch.load(ckpt_path, map_location=params.device)
+        data = torch.load(ckpt_path, map_location=params.device, weights_only=False)
         for k, v in modules.items():
             if k in data:
                 try:
@@ -224,9 +228,12 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda
         best_idx = 0  # LSO returns best in first position typically
         r2_final = batch_results['r2_zero_final_fit'][best_idx]
         
-        # Get predicted tree
-        if 'direct_predicted_tree' in batch_results:
-            predicted_tree = batch_results['direct_predicted_tree'][best_idx]
+        predicted_tree = batch_results['direct_predicted_tree'][best_idx] if 'direct_predicted_tree' in batch_results else None
+        skeleton_expr = None
+        skeleton_placeholders = []
+        skeleton_values = []
+        skeleton_tree = None
+        if predicted_tree is not None:
             try:
                 if hasattr(predicted_tree, 'infix'):
                     best_expr = predicted_tree.infix()
@@ -238,6 +245,26 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda
                     best_expr = best_expr.replace(old, new)
             except Exception:
                 best_expr = str(predicted_tree)
+            try:
+                skeleton_tree, constants = env.generator.function_to_skeleton(predicted_tree, constants_with_idx=True)
+                skeleton_values = []
+                for c in constants:
+                    try:
+                        skeleton_values.append(float(c))
+                    except Exception:
+                        try:
+                            skeleton_values.append(float(sp.N(str(c))))
+                        except Exception:
+                            skeleton_values.append(None)
+                skeleton_placeholders = []
+                for idx in range(len(constants)):
+                    name = f"CONSTANT_{idx}"
+                    if name not in env.simplifier.local_dict:
+                        env.simplifier.local_dict[name] = sp.Symbol(name, real=True)
+                    skeleton_placeholders.append(env.simplifier.local_dict[name])
+                skeleton_expr = env.simplifier.tree_to_sympy_expr(skeleton_tree)
+            except Exception as err:
+                print(f"Warning: failed to extract SNIP skeleton: {err}")
         else:
             best_expr = "Unknown"
         
@@ -247,7 +274,15 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device='cuda
         best_mse = (1.0 - r2_final) * y_var if r2_final < 1.0 else 1e-10
         
         print(f"LSO optimization complete: R2={r2_final:.6f}, MSE~{best_mse:.6e}")
-        return best_expr, best_mse
+        return {
+            'expr': best_expr,
+            'mse': best_mse,
+            'sympy_expr': skeleton_expr,
+            'const_placeholders': skeleton_placeholders,
+            'const_values': skeleton_values,
+            'predicted_tree': predicted_tree,
+            'skeleton_tree': skeleton_tree
+        }
     else:
         raise RuntimeError('LSO optimization failed to produce valid results')
 
@@ -515,10 +550,79 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 use_snip = cfg.get('use_snip', False)
 
                 if use_snip:
-                    best_expr, best_loss = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg, batch_data=batch_data)
-                    print("SNIP Best:", best_expr, best_loss)
-                    return best_loss
-
+                    snip_result = run_snip_symbolic_regression(gamma_sorted, mu_sorted, cfg, batch_data=batch_data)
+                    print("SNIP Best:", snip_result.get('expr'), snip_result.get('mse'))
+                    snip_expr = snip_result.get('sympy_expr')
+                    const_placeholders = snip_result.get('const_placeholders') or []
+                    const_values = snip_result.get('const_values') or []
+                    if snip_expr is None:
+                        raise RuntimeError("SNIP result missing symbolic skeleton; cannot run PDE optimization.")
+                    
+                    placeholder_map = {}
+                    snip_param_names = []
+                    for idx, placeholder_sym in enumerate(const_placeholders):
+                        param_name = f"snip_c{idx}"
+                        snip_param_names.append(param_name)
+                        tree.calculator.register_unknown_var(param_name)
+                        placeholder_map[placeholder_sym] = tree.calculator.sp_unknown_quantities[param_name]
+                    
+                    symbol_subs = {}
+                    for sym in list(snip_expr.free_symbols):
+                        name = getattr(sym, 'name', '')
+                        if name.startswith("x_"):
+                            try:
+                                feature_idx = int(name.split("_")[1])
+                            except ValueError:
+                                raise RuntimeError(f"Unexpected SNIP feature symbol '{name}'")
+                            if feature_idx >= len(x_vars):
+                                raise RuntimeError(f"SNIP expression references {name} but only {len(x_vars)} SR variables are provided.")
+                            var_name = x_vars[feature_idx]
+                            target_symbol = sp.Symbol(var_name)
+                            symbol_subs[sym] = target_symbol
+                    
+                    snip_expr_calc = snip_expr
+                    if symbol_subs:
+                        snip_expr_calc = snip_expr_calc.subs(symbol_subs)
+                    remaining = [
+                        sym for sym in snip_expr_calc.free_symbols
+                        if isinstance(sym, sp.Symbol) and sym.name.startswith("x_")
+                    ]
+                    if remaining:
+                        raise RuntimeError(f"SNIP expression contains unresolved inputs after substitution: {remaining}")
+                    
+                    if placeholder_map:
+                        snip_expr_calc = snip_expr_calc.subs(placeholder_map)
+                    
+                    tree.calculator.update_unknown_var(y, sp.sstr(snip_expr_calc))
+                    tree.calculator.upd_local_dict()
+                    
+                    train_loss_func, mse_list_train = tree.calculator.get_loss_func(deci_list_len=len(deci_list))
+                    valid_loss_func, mse_list_valid = tree.calculator.get_loss_func(mode="valid", deci_list_len=len(deci_list))
+                    init_params = np.random.rand(len(tree.calculator.sp_unknown_quantities))
+                    param_value_map = {}
+                    for idx, name in enumerate(snip_param_names):
+                        if idx < len(const_values) and const_values[idx] is not None:
+                            param_value_map[name] = const_values[idx]
+                    for idx, name in enumerate(tree.calculator.sp_unknown_quantities.keys()):
+                        if name in param_value_map:
+                            init_params[idx] = param_value_map[name]
+                    
+                    sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
+                    ret_sol = dict()
+                    ret_sol['train_loss'] = sol['fun']
+                    ret_sol['valid_loss'] = valid_loss_func(sol['x'])
+                    ret_sol['deci_list'] = deci_list
+                    params_name = list(map(str, tree.calculator.sp_unknown_quantities.keys()))
+                    ret_sol['params'] = dict(zip(params_name, sol['x']))
+                    ret_sol['time'] = sol['time']
+                    ret_sol['nit'] = sol['nit']
+                    ret_sol['status'] = sol['status']
+                    if 'stop_reason' in sol:
+                        ret_sol['stop_reason'] = sol['stop_reason']
+                    if ret_sol['status'] == "Success":
+                        ret_sol['train_mse_list'] = mse_list_train(sol['x'])
+                        ret_sol['valid_mse_list'] = mse_list_valid(sol['x'])
+                    return ret_sol
                 else:
                     expr, loss = sr_search_fn(calculator=calculator_copy, 
                                             y_name='mu', 

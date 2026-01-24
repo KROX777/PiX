@@ -159,12 +159,19 @@ class Calculator:
         if isinstance(expr, str):
             self.upd_local_dict()
             try:
-                self.sp_derived_quantities[var_name] = sp.sympify(expr, locals=self.local_dict)
-                self.sp_unknown_quantities.pop(var_name)
+                parsed_expr = sp.sympify(expr, locals=self.local_dict)
+                self.sp_derived_quantities[var_name] = parsed_expr
+                self.local_dict[var_name] = parsed_expr
+                self.sp_unknown_quantities.pop(var_name, None)
                 print(f"Updated variable '{var_name}' with expression: {expr}")
             except Exception as e:
                 print(f"Error updating variable '{var_name}' with expression '{expr}': {e}")
                 self.sp_unknown_quantities[var_name] = sp.symbols(var_name)
+        elif isinstance(expr, sp.Basic):
+            self.sp_derived_quantities[var_name] = expr
+            self.local_dict[var_name] = expr
+            self.sp_unknown_quantities.pop(var_name, None)
+            print(f"Updated variable '{var_name}' with symbolic expression.")
     
     def _create_velocity_vector(self):
         if 'u' in self.sp_field_funcs and 'v' in self.sp_field_funcs:
