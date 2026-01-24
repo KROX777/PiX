@@ -69,43 +69,44 @@ def gen2eq(env, params, encoded_y, generations, sample_to_learn, stored_skeleton
     ### 
     non_skeleton_tree = copy.deepcopy(generations_tree)
     skeleton_candidate, _ = env.generator.function_to_skeleton(non_skeleton_tree[0][0], constants_with_idx=False)
-    if skeleton_candidate.infix() in stored_skeletons:
-        return False, skeleton_candidate , None, None, None, None, None, None, None, None 
+    skeleton_key = skeleton_candidate.infix()
+    if skeleton_key not in stored_skeletons:
+        stored_skeletons.append(skeleton_key)
+
+    refined = refine(env, x_gt, y_gt, non_skeleton_tree[0], verbose=True)
+    best_tree = list(filter(lambda gen: gen["refinement_type"]=='BFGS', refined))
+    tree = best_tree[0]['predicted_tree'] #non_skeleton_tree[i][0] #
+
+    numexpr_fn = env.simplifier.tree_to_numexpr_fn(tree) 
+    y = numexpr_fn(x_gt)[:,0].reshape(-1,1)
+    y_pred = numexpr_fn(x_gt_pred)[:,0].reshape(-1,1)
+    if np.isnan(y).any():
+        mse_fit = float('inf')
     else:
-        refined = refine(env, x_gt, y_gt, non_skeleton_tree[0], verbose=True)
-        best_tree = list(filter(lambda gen: gen["refinement_type"]=='BFGS', refined))
-        tree = best_tree[0]['predicted_tree'] #non_skeleton_tree[i][0] #
+        mse_fit = np.mean((y-y_gt)**2) / ( np.mean(y_gt**2) + 1e-10)
+        mse_pred = np.mean((y_pred - y_gt_pred)**2) / ( np.mean(y_gt**2) + 1e-10)
 
-        numexpr_fn = env.simplifier.tree_to_numexpr_fn(tree) 
-        y = numexpr_fn(x_gt)[:,0].reshape(-1,1)
-        y_pred = numexpr_fn(x_gt_pred)[:,0].reshape(-1,1)
-        if np.isnan(y).any():
-            mse_fit = float('inf')
-        else:
-            mse_fit = np.mean((y-y_gt)**2) / ( np.mean(y_gt**2) + 1e-10)
-            mse_pred = np.mean((y_pred - y_gt_pred)**2) / ( np.mean(y_gt**2) + 1e-10)
+    complexity = len(tree.prefix().split(','))
 
-        complexity = len(tree.prefix().split(','))
-
-        results_fit = compute_metrics(
-            {
-                "true": [y_gt],
-                "predicted": [y],
-                # "tree": [tree_gt],
-                "predicted_tree": [tree],
-            },
-            metrics=params.validation_metrics,
-        )
-        results_predict = compute_metrics(
-            {
-                "true": [y_gt_pred],
-                "predicted": [y_pred],
-                "predicted_tree": [tree],
-            },
-            metrics=params.validation_metrics,
-        )
-        eq_outputs = (True, skeleton_candidate, tree, complexity, y, y_pred , mse_fit, mse_pred, results_fit, results_predict)
-        return eq_outputs
+    results_fit = compute_metrics(
+        {
+            "true": [y_gt],
+            "predicted": [y],
+            # "tree": [tree_gt],
+            "predicted_tree": [tree],
+        },
+        metrics=params.validation_metrics,
+    )
+    results_predict = compute_metrics(
+        {
+            "true": [y_gt_pred],
+            "predicted": [y_pred],
+            "predicted_tree": [tree],
+        },
+        metrics=params.validation_metrics,
+    )
+    eq_outputs = (True, skeleton_candidate, tree, complexity, y, y_pred , mse_fit, mse_pred, results_fit, results_predict)
+    return eq_outputs
 
 
 def create_population(env,params,model, sample_to_learn, encoded_y):
@@ -178,22 +179,32 @@ def lso_fit(sample_to_learn, env, params, model,batch_results,bag_number):
     outputs = model(sub_sample,max_len = params.max_target_len)
     encoded_y, generations, gen_len = outputs
     stored_skeletons = []
+    candidate_records = []
+    def store_direct_result(tree, skeleton_candidate, complexity, mse_fit, mse_pred, results_fit, results_predict):
+        batch_results["direct_predicted_tree"].extend([tree])
+        batch_results["complexity_gt_tree"].extend([complexity])
+        batch_results["direct_fit_mse"].extend([mse_fit])
+        batch_results["direct_pred_mse"].extend([mse_pred])
+        for k, v in results_fit.items():
+            batch_results[k + "_direct_fit"].extend(v)
+        for k, v in results_predict.items():
+            batch_results[k + "_direct_predict"].extend(v)
+        r2_val = results_fit.get('r2_zero', [0])[0]
+        candidate_records.append({
+            'tree': tree,
+            'skeleton': skeleton_candidate,
+            'r2': r2_val,
+            'mse': mse_fit,
+            'mse_pred': mse_pred,
+            'complexity': complexity
+        })
     try: 
         eq_outputs = gen2eq(env, params, encoded_y, generations, sample_to_learn, stored_skeletons)
         success , skeleton_candidate, tree, complexity, y, y_pred ,mse_fit, mse_pred, results_fit, results_predict = eq_outputs
         if success == True:
-            stored_skeletons.append(skeleton_candidate.infix())
             max_r2 = results_fit['r2_zero'][0]
-            # batch_results["gt_tree"].extend([tree_gt])
-            batch_results["direct_predicted_tree"].extend([tree])
-            batch_results["complexity_gt_tree"].extend([complexity])
-            batch_results["direct_fit_mse"].extend([mse_fit])
-            batch_results["direct_pred_mse"].extend([mse_pred])
-            for k, v in results_fit.items():
-                batch_results[k + "_direct_fit"].extend(v)
+            store_direct_result(tree, skeleton_candidate, complexity, mse_fit, mse_pred, results_fit, results_predict)
             del results_fit
-            for k, v in results_predict.items():
-                batch_results[k + "_direct_predict"].extend(v)
             del results_predict            
     except:
         tree = 'NaN'
@@ -241,7 +252,7 @@ def lso_fit(sample_to_learn, env, params, model,batch_results,bag_number):
                     eq_outputs = gen2eq(env, params, pop[i].reshape(1,-1), generations_pop[params.beam_size*i+b].reshape(1,-1), sample_to_learn , stored_skeletons)
                     success , skeleton_candidate, tree, complexity, y, y_pred, mse_fit, mse_pred, results_fit, results_predict = eq_outputs
                     if success == True:
-                        stored_skeletons.append(skeleton_candidate.infix())
+                        store_direct_result(tree, skeleton_candidate, complexity, mse_fit, mse_pred, results_fit, results_predict)
                         if results_fit['r2_zero'][0] >= highest_r2_in_beam:
                             highest_r2_in_beam = results_fit['r2_zero'][0] 
                             mse_in_beam = mse_fit
@@ -361,6 +372,10 @@ def lso_fit(sample_to_learn, env, params, model,batch_results,bag_number):
         del results_predict
 
         batch_results["time"].extend([optimization_duration])
+        # Record top candidate list
+        top_candidate_num = getattr(params, 'top_candidate_num', 5)
+        sorted_records = sorted(candidate_records, key=lambda x: x['r2'], reverse=True)
+        batch_results["_candidate_records"] = sorted_records[:top_candidate_num]
     except:
         pass
 
