@@ -471,7 +471,6 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 #     gamma_sorted = gamma_flat[order]
                 #     mu_sorted = mu_flat[order]
                 #     calculator_copy = copy.deepcopy(tree.calculator)
-                #     # Optionally run SNIP-based symbolic regression (from SNIP/quick_test_e2e)
                 #     use_snip = cfg.get('use_snip', False)
 
                 #     if use_snip:
@@ -567,7 +566,6 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                     mu_sorted = mu_sorted[order]
                 
                 calculator_copy = copy.deepcopy(tree.calculator)
-                # Optionally run SNIP-based symbolic regression (from SNIP/quick_test_e2e)
                 use_snip = cfg.get('use_snip', False)
 
                 if use_snip:

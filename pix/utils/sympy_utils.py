@@ -23,7 +23,7 @@ def sp_simplify_with_timeout(expr, timeout=3):
             simplified = expr.simplify()
             signal.alarm(0)
             return simplified
-        except (NotImplementedError, TimeoutError) as error:
+        except Exception:
             signal.alarm(0)
             return expr
     return expr

@@ -466,65 +466,7 @@ def get_parser():
         default=0.0,
         help="targte noise for the pmlb added to the y_to_fit",
     )
-    
-    # diffusion
-    parser.add_argument(
-        "--use_diffusion",
-        type=bool_flag,
-        default=False,
-        help="Use diffusion-based training instead of encoder-decoder training",
-    )
-    parser.add_argument(
-        "--use_stable_diffusion",
-        type=bool_flag,
-        default=False,
-        help="Use latent (Stable-Diffusion style) training instead of discrete categorical diffusion",
-    )
-    parser.add_argument(
-        "--diffusion_num_timesteps",
-        type=int,
-        default=1000,
-        help="Number of diffusion timesteps",
-    )
-    parser.add_argument(
-        "--diffusion_schedule_type",
-        type=str,
-        default="cosine",
-        choices=["linear", "cosine"],
-        help="Type of diffusion schedule",
-    )
 
-    parser.add_argument(
-        "--stable_loss_mode",
-        type=str,
-        default="mse+crossent",
-        choices=["mse", "crossent-only", "mse+crossent"],
-        help="Loss used for latent diffusion training",
-    )
-    parser.add_argument(
-        "--stable_mse_weight",
-        type=float,
-        default=1.0,
-        help="Weight for latent MSE loss",
-    )
-    parser.add_argument(
-        "--stable_ce_weight",
-        type=float,
-        default=1.0,
-        help="Weight for decoder cross-entropy loss when used",
-    )
-    parser.add_argument(
-        "--stable_denoiser_layers",
-        type=int,
-        default=2,
-        help="Number of layers in the latent denoiser",
-    )
-    parser.add_argument(
-        "--denoiser_embed_dim",
-        type=int,
-        default=None,
-        help="Embedding dim used internally by the denoiser (defaults to enc_emb_dim)",
-    )
 
     # `vocab_size` removed: the code now always uses `env.n_words` by default.
 
