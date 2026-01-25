@@ -464,7 +464,20 @@ class Calculator:
         loss_func: function, the loss function to minimize.
         loss_func_list: function, returns a list of mean squared errors for each residual.
         """
-        self.get_sp_equation()
+        if len(self.sp_equation) == 0:
+            try:
+                self.get_sp_equation()
+            except TimeoutError:
+                print("[Calculator] simplify timeout; using unsimplified equations")
+                self.sp_equation = []
+                for eq_str in self.equation_buffer:
+                    try:
+                        eq = sp.sympify(eq_str, locals=self.local_dict)
+                        self.sp_equation.append(eq)
+                    except Exception as e:
+                        print(f"Error parsing equation '{eq_str}': {e}")
+            except Exception as e:
+                print(f"[Calculator] simplify failed, bypassing: {e}")
         tot_count_ops = sum( [r.count_ops() for r in self.sp_equation if hasattr(r, "count_ops")] )
         reg_coefs = reg_scale * np.array([1e-5, 1e-5, 1e-7])  # reg_coefs of [len(deci_list), len(params), tot_count_ops]
         reg_list = lambda params: [deci_list_len, len(params), tot_count_ops]
