@@ -1,0 +1,476 @@
+constants: {}
+derived_quantities:
+  F: Array([Fx, Fy])
+  Fx: '?'
+  Fy: '?'
+  S: 0.5 * (grad(V) + transpose(grad(V)))
+  gamma: sqrt(2*ddot(S, S))
+  mu: '?'
+  tau: 2*mu*S - 2/X_dim*mu*div(V)*I
+  k: '?'
+  Cp: '?'
+description: Fluid Mechanics problem with various hypotheses
+hypotheses:
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 1
+  name: determine_compressibility
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation:
+  - DDt(rho)
+  - norm(grad(rho))
+  father_node: 1
+  id: 2
+  name: compressible_false
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 1
+  id: 3
+  name: compressible_true
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 4
+  name: type_body_force
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions:
+  - Fx=0
+  - Fy=0
+  equation: []
+  father_node: 4
+  id: 5
+  name: no_body_force
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[gy]gy>5'
+  definitions:
+  - Fx=0
+  - '[gy] Fy=-rho*gy'
+  equation: []
+  father_node: 4
+  id: 6
+  name: gravity
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 7
+  name: determine_turbulence
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 7
+  id: 8
+  name: non_turbulent
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 7
+  id: 9
+  name: turbulent
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 8
+  id: 10
+  name: laminar
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: ["rho * V.diff(t) - div(-p * I + tau) - F"]
+  father_node: 8
+  id: 11
+  name: creeping
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 9
+  id: 12
+  name: k-epsilon
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 9
+  id: 13
+  name: realizable k-epsilon
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 14
+  name: determine_newtonian
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 14
+  id: 15
+  name: non_newtonian
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 14
+  id: 16
+  name: newtonian
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[mu_k] mu_k>0'
+  definitions:
+  - '[mu_k;n] mu = mu_k * (gamma)**(n-1)'
+  equation: []
+  father_node: 15
+  id: 17
+  name: powerlaw(mu_app)
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[mu_inf] mu_inf>0'
+  - '[mu_k] mu_k + mu_inf>0'
+  - '[lambda_rt] lambda_rt>0'
+  - '[n] 1-n>0'
+  definitions:
+  - '[mu_inf;mu_k;lambda_rt;n] mu = mu_inf + mu_k*(1+(lambda_rt*gamma)**2)**((n-1)/2)'
+  equation: []
+  father_node: 15
+  id: 18
+  name: carreau
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 15
+  id: 19
+  name: new_non_newtonian_1
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[n] 1-n>0'
+  definitions: []
+  equation: []
+  father_node: 17
+  id: 20
+  name: pseudoplastic
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[n] n-1>0'
+  definitions: []
+  equation: []
+  father_node: 17
+  id: 21
+  name: dilatant
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 19
+  id: 22
+  name: poly_order_type
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 19
+  id: 23
+  name: fourier_order_type
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 22
+  id: 24
+  name: poly_order_0
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions:
+  - '[mu_inf;a1]mu=mu_inf+a1*gamma'
+  equation: []
+  father_node: 22
+  id: 25
+  name: poly_order_1
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions:
+  - '[mu_inf;a1;a2]mu=mu_inf+a1*gamma+a2*gamma**2'
+  equation: []
+  father_node: 22
+  id: 26
+  name: poly_order_2
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 23
+  id: 27
+  name: fourier_order_0
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions:
+  - '[mu_inf;a1;b1]mu=a1*sin(gamma)+b1*cos(gamma)'
+  equation: []
+  father_node: 23
+  id: 28
+  name: fourier_order_1
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions:
+  - '[mu_inf;a1;b1;a2;b2]mu=a1*sin(gamma)+b1*cos(gamma)+a2*sin(2*gamma)+b2*cos(2*gamma)'
+  equation: []
+  father_node: 23
+  id: 29
+  name: fourier_order_2
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions:
+  - mu=0
+  equation: []
+  father_node: 16
+  id: 30
+  name: inviscid
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[mu] mu>0'
+  definitions: []
+  equation: []
+  father_node: 16
+  id: 31
+  name: newtonian
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 15
+  id: 32
+  name: new_non_newtonian_2
+  related_variables:
+  - - mu
+    - gamma
+  require_sr: true
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 33
+  name: determine_thermal_conductivity
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation:
+  - -div(k*grad(T))
+  father_node: 33
+  id: 34
+  name: is_thermal_conductive
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 34
+  id: 45
+  name: k_temperature_dependence
+  related_variables:
+  - - k
+    - T
+  require_sr: true
+- constraints: []
+  definitions:
+  - k=0
+  equation: []
+  father_node: 33
+  id: 35
+  name: non_thermal_conductive
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 36
+  name: determine_viscous_dissipation
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation:
+  - 2*mu*ddot(S, S)
+  father_node: 36
+  id: 37
+  name: is_viscosity_dissipation
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation:
+  - 0
+  father_node: 36
+  id: 38
+  name: no_viscosity_dissipation
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 0
+  id: 39
+  name: determine_pressure_work
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation:
+  - -p*div(V)
+  father_node: 39
+  id: 40
+  name: is_pressure_work
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation:
+  - 0
+  father_node: 39
+  id: 41
+  name: no_pressure_work
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 15
+  id: 42
+  name: determine_mu_temperature_dependence
+  related_variables: []
+  require_sr: false
+- constraints: []
+  definitions: []
+  equation: []
+  father_node: 42
+  id: 43
+  name: mu_temperature_independent
+  related_variables: []
+  require_sr: false
+- constraints:
+  - '[mu_T0] mu_T0>0'
+  definitions:
+  - '[mu_T0;sigma_T;n_T] mu = mu_T0*(1 + sigma_T*(T - T_ref))**n_T'
+  equation: []
+  father_node: 42
+  id: 44
+  name: powerlaw(mu_T)
+  related_variables: []
+  require_sr: false
+known_equations:
+- conserve(rho)
+- rho * conserve(V) - div(-p * I + tau) - F
+- rho*Cp*(T.diff(t) + dot(V, grad(T))) - div(k*grad(T))
+name: Nonisothermal Fluid
+symbolic_regression_config:
+  allow_nesting: false
+  functions:
+  - sin(x)
+  - cos(x)
+  - log(x)
+  - 1/x
+  - sin(x)/x
+  - cos(x)/x
+  - log(x)/x
+  
+  # 操作符配置
+  binary_ops: ['Add', 'Mul', 'Pow']
+  unary_ops: ['Cos']
+  leaf_ops: [1]
+  
+  # 搜索参数
+  sample_num: 512                    # 采样点数量
+  n_iter: 10000                      # 最大迭代次数
+  search_max_iter: 5000              # 搜索最大迭代
+  time_limit: 300.0                  # 时间限制（秒）
+  target_r2: 0.999                   # 目标 R2 值
+  
+  # MCTS 参数
+  child_num: 50                      # MCTS 子节点数
+  n_playout: 100                     # 模拟次数
+  d_playout: 10                      # 模拟深度
+  c: 1.41                            # MCTS c 参数
+  
+  # 奖励和复杂度参数
+  eta: 0.999                         # 复杂度衰减因子
+  complexity_alpha: 1.0              # 复杂度缩放因子
+  complexity_limit: null             # 复杂度硬限制
+  
+  # 模型参数
+  disable_prod_model: true           # 是否禁用乘积模型
+  max_power_abs: 3                   # 幂次绝对值限制 (防止负幂问题)
+  max_len: 30                        # 表达式最大长度
+  max_nesting_depth: 3               # 最大嵌套深度限制 (例如: log(cos(log(x)))是3层)
+  
+  # 数据处理参数
+  normalize_y: false                 # 是否归一化 y
+  normalize_all: false               # 是否归一化所有数据
+  remove_abnormal: true              # 是否移除异常值
+  keep_vars: true                    # 是否保留变量
+  
+  # 额外参数
+  extra_leaf: ''                     # 额外叶子常量
+  log_per_sec: 5                     # 日志频率
+  strict_search: false               # 严格搜索模式
+  verbose: true                      # 详细输出
+unknown_variables:
+- mu
+- Fx
+- Fy
+variables:
+- x
+- y
+- t
+- u
+- v
+- rho
+- p
+- T

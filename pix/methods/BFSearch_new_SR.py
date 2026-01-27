@@ -309,6 +309,7 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None,
 
 def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, verbose=True, preset=None, allowed_functions=None, method="directxy"):
     tree = HypothesesTree(cfg, root_dir)
+    use_clustering = getattr(cfg, 'use_clustering', True)
     SR_list = []
     for i in deci_list:
         related_vars = tree.activate_node(i, verbose=True)
@@ -530,40 +531,48 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, ver
                 batch_data = None
                 if len(mu_sorted) > 200:
                     k = 200
-                    kmeans = KMeans(n_clusters=k, max_iter=200, random_state=42)
-                    kmeans.fit(mu_sorted.reshape(-1, 1))
-                    
-                    # Compute cluster size statistics
-                    labels = kmeans.labels_
-                    unique_labels, cluster_sizes = np.unique(labels, return_counts=True)
-                    print(f"KMeans clustering: {len(mu_sorted)} points -> {k} clusters")
-                    print(f"  Cluster sizes - max: {cluster_sizes.max()}, min: {cluster_sizes.min()}, "
-                          f"avg: {cluster_sizes.mean():.2f}, std: {cluster_sizes.std():.2f}")
-                    
-                    # c = input("Press Enter to continue...")
-                    snip_mode = cfg.get('snip_mode', 'random')
-                    if snip_mode == 'random':
-                        print(f"  Using random sampling mode: generating 50 batches")
-                        batch_data = []
-                        for _ in range(50):
-                            indices = []
-                            for i in range(k):
-                                cluster_indices = np.where(labels == i)[0]
-                                if len(cluster_indices) > 0:
-                                    indices.append(np.random.choice(cluster_indices))
-                            indices = np.array(indices)
-                            g_sub = gamma_sorted[indices]
-                            m_sub = mu_sorted[indices]
-                            order_sub = np.argsort(g_sub)
-                            batch_data.append((g_sub[order_sub], m_sub[order_sub]))
+                    if use_clustering:
+                        kmeans = KMeans(n_clusters=k, max_iter=200, random_state=42)
+                        kmeans.fit(mu_sorted.reshape(-1, 1))
+                        
+                        # Compute cluster size statistics
+                        labels = kmeans.labels_
+                        unique_labels, cluster_sizes = np.unique(labels, return_counts=True)
+                        print(f"KMeans clustering: {len(mu_sorted)} points -> {k} clusters")
+                        print(f"  Cluster sizes - max: {cluster_sizes.max()}, min: {cluster_sizes.min()}, "
+                              f"avg: {cluster_sizes.mean():.2f}, std: {cluster_sizes.std():.2f}")
+                        
+                        snip_mode = cfg.get('snip_mode', 'random')
+                        if snip_mode == 'random':
+                            print(f"  Using random sampling mode: generating 50 batches")
+                            batch_data = []
+                            for _ in range(50):
+                                indices = []
+                                for i in range(k):
+                                    cluster_indices = np.where(labels == i)[0]
+                                    if len(cluster_indices) > 0:
+                                        indices.append(np.random.choice(cluster_indices))
+                                indices = np.array(indices)
+                                g_sub = gamma_sorted[indices]
+                                m_sub = mu_sorted[indices]
+                                order_sub = np.argsort(g_sub)
+                                batch_data.append((g_sub[order_sub], m_sub[order_sub]))
 
-                    centroids = kmeans.cluster_centers_
-                    closest, _ = pairwise_distances_argmin_min(centroids, mu_sorted.reshape(-1, 1))
-                    gamma_sorted = gamma_sorted[closest]
-                    mu_sorted = mu_sorted[closest]
-                    order = np.argsort(gamma_sorted)
-                    gamma_sorted = gamma_sorted[order]
-                    mu_sorted = mu_sorted[order]
+                        centroids = kmeans.cluster_centers_
+                        closest, _ = pairwise_distances_argmin_min(centroids, mu_sorted.reshape(-1, 1))
+                        gamma_sorted = gamma_sorted[closest]
+                        mu_sorted = mu_sorted[closest]
+                        order = np.argsort(gamma_sorted)
+                        gamma_sorted = gamma_sorted[order]
+                        mu_sorted = mu_sorted[order]
+                    else:
+                        print(f"[BFSearch] use_clustering=False, sampling {k} random points from {len(mu_sorted)}")
+                        indices = np.random.choice(len(mu_sorted), size=k, replace=False)
+                        gamma_sorted = gamma_sorted[indices]
+                        mu_sorted = mu_sorted[indices]
+                        order = np.argsort(gamma_sorted)
+                        gamma_sorted = gamma_sorted[order]
+                        mu_sorted = mu_sorted[order]
                 
                 calculator_copy = copy.deepcopy(tree.calculator)
                 use_snip = cfg.get('use_snip', False)

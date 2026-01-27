@@ -6,3 +6,4 @@ pix/methods/SR4MDL/weights/checkpoint.pth
 
 *.pyc
 *.npz
+results/
