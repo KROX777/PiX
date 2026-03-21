@@ -15,7 +15,10 @@ import os
 import time
 
 class Calculator:
-    def __init__(self, config, root_dir, datafold_tuple=(0,1), tol=1e-3, K=1):
+    def __init__(self, config, root_dir, datafold_tuple=(0,1), tol=1e-3, K=1, math_only=False):
+        """
+        math_only: if True, not setting velocity vector.
+        """
         self.config = config
         self.data_loader = DataLoader(config)
         self.root_dir = root_dir
@@ -49,7 +52,8 @@ class Calculator:
                 self.sp_field_funcs[var] = f(*self.space_axis)
         
         # 创建速度向量（在解析derived_quantities之前）
-        self._create_velocity_vector()
+        if not math_only:
+            self._create_velocity_vector()
         
         # 导出物理量（延迟解析，在所有基础符号创建完成后）
         # 知道unknown quantity之后，会转到derived quantity，derived quantity表达式里可能有unknown quantity
