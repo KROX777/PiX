@@ -354,6 +354,12 @@ class Calculator:
                 for j in range(len(self.space_axis)):
                     self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.X[i], self.X[j]))
 
+            # Third-order spatial derivatives
+            for i in range(len(self.space_axis)):
+                for j in range(len(self.space_axis)):
+                    for k in range(len(self.space_axis)):
+                        self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.X[i], self.X[j], self.X[k]))
+
             # Time derivative if time is included
             if self.has_time:
                 self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.t))
@@ -361,7 +367,7 @@ class Calculator:
         self.args_data = self.data_loader.get_args_data(verbose=self.config.verbose)
         def pre_process(arr):
             # clip boundary
-            n_clip = 5
+            n_clip = 2
             if self.dim == 3:
                 arr = arr[n_clip: -n_clip, n_clip: -n_clip, n_clip: -n_clip]
             elif self.dim == 2:

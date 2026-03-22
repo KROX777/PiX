@@ -17,8 +17,13 @@ def sp_simplify_with_timeout(expr, timeout=3):
     and also catch NotImplementedError (err msg: Improve MV Derivative support in collect)
     """
     if hasattr(expr, "simplify"):   
-        signal.signal(signal.SIGALRM, handler)
-        signal.alarm(timeout)
+        try:
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(timeout)
+        except ValueError:
+            # Cannot set signal in non-main thread
+            return expr.simplify()
+
         try:
             simplified = expr.simplify()
             signal.alarm(0)

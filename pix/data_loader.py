@@ -125,7 +125,7 @@ class DataLoader:
             raise ValueError(f"Dataset source not supported: {datasource}")
         self.grids = tuple(grids)
         
-        n_clip = 5
+        n_clip = 2
         if len(self.u.shape)==4:  # 3 dimensional data (2 space dim, 1 temporal dim)
             if n_clip > 0:
                 self.u = self.u[n_clip: -n_clip, n_clip: -n_clip,...]
@@ -146,10 +146,12 @@ class DataLoader:
             if len(self.grids) > 1:
                 grad_ = np_grad([data], self.grids, is_time_grad=False)  # 空间一阶导数
                 grad_grad_ = np_grad(grad_, self.grids, is_time_grad=False)  # 空间二阶导数
+                grad_3_ = np_grad(grad_grad_, self.grids, is_time_grad=False)  # 空间三阶导数
                 dt_ = np_grad([data], self.grids, is_time_grad=True)  # 时间导数
                 
                 args_data.extend(grad_)      
                 args_data.extend(grad_grad_) 
+                args_data.extend(grad_3_) 
                 args_data.extend(dt_)                
         
         return args_data
