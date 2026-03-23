@@ -362,7 +362,10 @@ class Calculator:
 
             # Time derivative if time is included
             if self.has_time:
+                # First-order time derivative
                 self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.t))
+                # Second-order time derivative
+                self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.t, self.t))
         
         self.args_data = self.data_loader.get_args_data(verbose=self.config.verbose)
         def pre_process(arr):

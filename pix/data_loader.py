@@ -147,11 +147,13 @@ class DataLoader:
                 grad_ = np_grad([data], self.grids, is_time_grad=False)  # 空间一阶导数
                 grad_grad_ = np_grad(grad_, self.grids, is_time_grad=False)  # 空间二阶导数
                 grad_3_ = np_grad(grad_grad_, self.grids, is_time_grad=False)  # 空间三阶导数
-                dt_ = np_grad([data], self.grids, is_time_grad=True)  # 时间导数
+                dt_ = np_grad([data], self.grids, is_time_grad=True)  # 时间一阶导数
+                dtt_ = np_grad(dt_, self.grids, is_time_grad=True)    # 时间二阶导数
                 
                 args_data.extend(grad_)      
                 args_data.extend(grad_grad_) 
                 args_data.extend(grad_3_) 
                 args_data.extend(dt_)                
+                args_data.extend(dtt_)
         
         return args_data
