@@ -1,48 +1,105 @@
 """
-Calculator class for symbolic calculations.
-All symbols are claimed and stored here.
-Equations are also stored here.
-Symbolic regression isn't included in this class, offering more freedom.
+Core symbolic computation framework for PiX.
+
+Calculator manages all symbolic representations of physical quantities,
+equations, and constraints for PDE discovery. It automatically handles:
+    - Symbol declaration and management
+    - Symbolic field functions and derivatives
+    - Equation parsing and simplification
+    - Loss function generation for optimization
+
+All symbolic expressions are built using SymPy and can be evaluated
+numerically through generated NumPy functions.
 """
 
-from pix.data_loader import DataLoader
-import numpy as np
-import sympy as sp
-from pix.utils.sympy_utils import *
-from pix.utils.numpy_utils import np_grad_all, pooling
-from sklearn.model_selection import KFold
+from typing import Dict, Tuple, Optional, List, Any, Callable
+import logging
 import os
 import time
 
+import numpy as np
+import sympy as sp
+from sklearn.model_selection import KFold
+
+from pix.data_loader import DataLoader
+from pix.utils.sympy_utils import *
+from pix.utils.numpy_utils import np_grad_all, pooling
+
+logger = logging.getLogger(__name__)
+
+
 class Calculator:
-    def __init__(self, config, root_dir, datafold_tuple=(0,1), tol=1e-3, K=1, math_only=False):
+    """
+    Symbolic computation engine for PDE discovery.
+    
+    Manages symbolic representations and numerical computations for:
+    - Physical field variables and their derivatives
+    - Derived physical quantities
+    - Equations and constraints
+    - Loss functions for optimization
+    
+    Attributes:
+        config: Configuration dictionary with problem definition.
+        root_dir: Root directory path for data access.
+        spatial_vars: List of spatial variable names.
+        field_vars: List of field variable names.
+        temporal_vars: List of temporal variable names.
+        sp_spatial_vars: Dictionary of symbolic spatial variables.
+        sp_field_funcs: Dictionary of symbolic field functions.
+        sp_derived_quantities: Dictionary of derived physical quantities.
+        sp_unknown_quantities: Dictionary of unknown variables to solve for.
+        sp_constants: Dictionary of physical constants.
+        sp_equation: List of parsed symbolic equations.
+    """
+    
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        root_dir: str,
+        datafold_tuple: Tuple[int, int] = (0, 1),
+        tol: float = 1e-3,
+        K: int = 1,
+        math_only: bool = False
+    ) -> None:
         """
-        math_only: if True, not setting velocity vector.
+        Initialize Calculator with configuration and data.
+        
+        Args:
+            config: Configuration dictionary with problem parameters.
+            root_dir: Root directory for accessing datasets.
+            datafold_tuple: (fold_index, total_folds) for k-fold cross-validation.
+            tol: Tolerance for numerical operations.
+            K: Number of k-folds for cross-validation.
+            math_only: If True, skip velocity vector initialization.
         """
         self.config = config
         self.data_loader = DataLoader(config)
         self.root_dir = root_dir
-        # 缓存数据和网格
-        self.data_loader.get_raw_data(os.path.join(root_dir, config.dataset_path), verbose=config.verbose)
+        
+        # Load and cache data
+        self.data_loader.get_raw_data(
+            os.path.join(root_dir, config.dataset_path),
+            verbose=config.verbose
+        )
         self.spatial_vars = self.data_loader.spatial_vars
         self.field_vars = self.data_loader.field_vars
         self.temporal_vars = self.data_loader.temporal_vars
 
-        # ---- 自动符号声明----
-        # 空间变量
+        # Automatic symbol declaration
+        # Spatial variables
         self.sp_spatial_vars = {var: sp.symbols(var) for var in self.spatial_vars}
         self.space_axis = [self.sp_spatial_vars[var] for var in self.spatial_vars]
 
         self.X = sp.Array(self.space_axis)
         self.X_dim = len(self.space_axis)
         
-        # 时间变量
+        # Time variables
         self.sp_temporal_vars = {var: sp.symbols(var) for var in self.temporal_vars}
         self.has_time = 't' in self.temporal_vars
         if self.has_time:
             self.t = self.sp_temporal_vars['t']
 
-        # 场变量（自动生成符号函数，并自动展开）
+        # Field variables (auto-generate symbolic functions)
         self.sp_field_funcs = {}
         for var in self.field_vars:
             f = sp.Function(var)
@@ -51,47 +108,47 @@ class Calculator:
             else:
                 self.sp_field_funcs[var] = f(*self.space_axis)
         
-        # 创建速度向量（在解析derived_quantities之前）
+        # Create velocity vector (before parsing derived_quantities)
         if not math_only:
             self._create_velocity_vector()
         
-        # 导出物理量（延迟解析，在所有基础符号创建完成后）
-        # 知道unknown quantity之后，会转到derived quantity，derived quantity表达式里可能有unknown quantity
+        # Export physical quantities (delayed parsing after all basic symbols are created)
+        # Once unknown quantity is known, go to derived quantity. Derived quantity expressions may contain unknown quantities
         self.sp_derived_quantities = {}
         self.sp_unknown_quantities = {}
         self.sp_constants = {}
-        # 常量
+        # Constants
         for k, v in config.problem['constants'].items():
             try:
                 self.sp_constants[k] = sp.sympify(v)
             except Exception as e:
                 print(f"Warning: Could not parse constant '{k}': {v}, error: {e}")
         
-        # 其它常量
+        # Other constants
         self.sp_constants['I'] = sp.Array(sp.eye(self.X_dim))
         
-        # 函数
+        # Functions
         self.grad = lambda a: ts_grad(a, self.X)
         self.norm = lambda tensor: sp.sqrt(ddot(tensor, tensor) + 1e-16)
         
         self.local_dict = {}
         self._build_local_dict()
         
-        # 注册配置文件中定义的未知变量
+        # Register unknown variables defined in config
         if 'unknown_variables' in config.problem:
             for var_name in config.problem['unknown_variables']:
                 self.register_unknown_var(var_name)
         
-        # 先注册 derived_quantities 中标记为未知的量
+        # First register quantities in derived_quantities marked as unknown
         for k, v in config.problem['derived_quantities'].items():
             if v.strip() == '?':
                 self.sp_unknown_quantities[k] = sp.symbols(k)
 
-        # 其它设置
+        # Other settings
         self.tol = tol
         self.dim = self.X_dim + (1 if self.has_time else 0)
         
-        # 计算网格间距（等距网格）
+        # Calculate grid spacing (uniform grid)
         self.dx = None
         self.dy = None
         self.dz = None
@@ -104,17 +161,17 @@ class Calculator:
                 self.dz = round(self.data_loader.grids[i][1] - self.data_loader.grids[i][0], 6)
         self.dt = round(self.data_loader.grids[-1][1] - self.data_loader.grids[-1][0], 6) if self.has_time else None
         
-        # 现在解析导出物理量（所有符号都已经创建）
+        # Parse derived physical quantities now (all symbols already created)
         self._parse_derived_quantities()
 
-        # 等式 - 创建副本而不是直接引用
-        self.equation_buffer = config.problem['known_equations'].copy()  # 添加 .copy()
+        # Equations - create a copy instead of direct reference
+        self.equation_buffer = config.problem['known_equations'].copy()  # Add .copy()
         self.sp_equation = []
         
-        # 约束
+        # Constraints
         self.constraints = {} # var: {"type": str, "fun": sp function}
         
-        # 函数自变量
+        # Function arguments
         self.args_data = []
         self.args_symbols = []
         self.load_args()
@@ -210,21 +267,21 @@ class Calculator:
             iteration += 1
             progress_made = False
             
-            # 尝试解析剩余的量
+            # Try to parse remaining quantities
             failed_this_round = {}
             for k, v in list(to_parse.items()):
                 try:
                     parsed_expr = sp.sympify(v, locals=self.local_dict)
-                    # 用实际表达式替换符号占位符
+                    # Replace symbolic placeholders with actual expressions
                     self.sp_derived_quantities[k] = parsed_expr
                     self.local_dict[k] = parsed_expr
                     print(f"Successfully parsed derived quantity '{k}': {v}")
-                    del to_parse[k]  # 从待解析列表中移除
+                    del to_parse[k]  # Remove from parsing list
                     progress_made = True
                 except Exception as e:
                     failed_this_round[k] = (v, str(e))
             
-            # 如果这轮没有任何进展，说明有循环依赖或无法解析的表达式
+            # If no progress this round, likely circular dependency or unparseable expressions
             if not progress_made:
                 print("Warning: Some derived quantities could not be parsed:")
                 for k, (v, error) in failed_this_round.items():
@@ -272,9 +329,9 @@ class Calculator:
             # Update conserve to use time variable when available
             self.local_dict['conserve'] = lambda f: conserve(f, self.V, self.X, self.t)
     
-    # TODO: 优化，这里现在太慢了
+    # TODO: Optimize this, it's too slow now
     def upd_local_dict(self):
-        # 迭代更新导出量
+        # Iteratively update derived quantities
         symbols = {sp.Symbol(k): v for k, v in self.sp_derived_quantities.items() 
                if isinstance(v, (int, float, sp.Basic))}
     
@@ -284,7 +341,7 @@ class Calculator:
             for key, value in self.sp_derived_quantities.items():
                 if isinstance(value, sp.Basic):
                     new_value = value.subs(symbols)
-                    if new_value != value:  # 如果替换后值变化
+                    if new_value != value:  # If value changed after substitution
                         self.sp_derived_quantities[key] = new_value
                         symbols[sp.Symbol(key)] = new_value
                         changed = True
@@ -404,10 +461,10 @@ class Calculator:
                     except Exception as e:
                         return np.full_like(args[0], 1e10)
 
-                    # 尝试将结果转换为浮点数组；若为复数或无法转换，则进行降级处理
+                    # Try to convert result to float array; if complex or unconvertible, handle gracefully
                     try:
                         arr = np.asarray(result)
-                        # 如果出现复数，若虚部显著则判为无效；否则取实部
+                        # If complex: if imaginary part is significant, mark invalid; otherwise take real part
                         if np.iscomplexobj(arr):
                             if np.any(np.abs(np.imag(arr)) > 1e-12):
                                 return np.full_like(args[0], 1e10)
@@ -416,7 +473,7 @@ class Calculator:
                     except Exception:
                         return np.full_like(args[0], 1e10)
 
-                    # 对于无穷，保留符号，替换为大但有限的值；NaN 置 0
+                    # For infinity: preserve sign, replace with large finite values; NaN -> 0
                     if np.any(~np.isfinite(arr)):
                         sign = np.sign(arr)
                         arr = np.where(np.isinf(arr), sign * 1e10, arr)
@@ -510,20 +567,20 @@ class Calculator:
                 spatial_shape = args_data[0].shape[:2]  # (nx, ny)
                 time_steps = None
             
-            # 计算要采样的空间区域数量
+            # Calculate number of spatial regions to sample
             total_spatial_area = spatial_shape[0] * spatial_shape[1]
             target_spatial_area = int(total_spatial_area * sample_ratio)
             
-            # 每个区域的大小（保证能进行pooling）
-            region_height = max(pool_size * 2, spatial_shape[0] // 4)  # 至少是pooling size的2倍
+            # Region size (ensure can do pooling)
+            region_height = max(pool_size * 2, spatial_shape[0] // 4)  # At least 2x pooling size
             region_width = max(pool_size * 2, spatial_shape[1] // 4)
             region_area = region_height * region_width
             
-            # 计算需要采样的区域数量
+            # Calculate number of regions to sample
             n_regions = max(1, target_spatial_area // region_area)
             n_regions = min(n_regions, (spatial_shape[0] // region_height) * (spatial_shape[1] // region_width))
             
-            # 生成随机的空间区域位置
+            # Generate random spatial region positions
             spatial_regions = []
             for _ in range(n_regions):
                 start_x = np.random.randint(0, max(1, spatial_shape[0] - region_height + 1))
@@ -532,7 +589,7 @@ class Calculator:
                                       slice(start_y, start_y + region_width)))
             
             if self.has_time and time_steps > 1:
-                # 采样部分时间步
+                # Sample partial time steps
                 n_time_samples = max(1, int(time_steps * sample_ratio * 0.3))
                 time_indices = np.random.choice(time_steps, size=n_time_samples, replace=False)
                 time_indices = np.sort(time_indices)  # 保持时间顺序
@@ -545,25 +602,25 @@ class Calculator:
             sampled_args = []
             
             for arg in args:
-                # 从所有空间区域中采样数据
+                # Sample data from all spatial regions
                 region_samples = []
                 for region_slice in spatial_regions:
                     if self.has_time:
-                        # 形状: (x, y, t, ...) -> 先采样空间区域，再采样时间步
+                        # Shape: (x, y, t, ...) -> sample spatial region first, then time steps
                         if time_indices is not None:
-                            # 采样空间区域和时间步
+                            # Sample spatial region and time steps
                             region_data = arg[region_slice]  # (region_h, region_w, t, ...)
                             region_data = region_data[:, :, time_indices]  # (region_h, region_w, n_time_samples, ...)
                         else:
-                            # 只采样空间区域
+                            # Only sample spatial region
                             region_data = arg[region_slice]  # (region_h, region_w, t, ...)
                     else:
-                        # 形状: (x, y, ...) -> 只采样空间区域
+                        # Shape: (x, y, ...) -> only sample spatial region
                         region_data = arg[region_slice]  # (region_h, region_w, ...)
                     
                     region_samples.append(region_data)
                 
-                # 将多个区域的数据合并（沿着第一个维度拼接）
+                # Merge data from multiple regions (concatenate along first dimension)
                 if len(region_samples) > 1:
                     sampled_arg = np.concatenate(region_samples, axis=0)
                 else:
@@ -580,18 +637,18 @@ class Calculator:
             src_eqs = None
         res_func_list = self.gen_np_func(self.sp_equation, verbose=True, src_strs=src_eqs)
         
-        # 预采样一次，避免每次评估都重新切片与拼接大数组
+        # Pre-sample once to avoid re-slicing and concatenating large arrays on each eval
         sampled_args = sample_args(args_data)
 
         def mse_list_sampled_noresample(params):
-            # 直接使用预采样的 sampled_args 来计算每个 residual 的均方
+            # Use pre-sampled sampled_args to compute MSE for each residual
             residuals = []
             t_eval0 = time.time()
             labels = getattr(self, "_last_residual_labels", None)
             for i, res in enumerate(res_func_list):
                 t_i0 = time.time()
                 res_values = res(sampled_args, params)
-                # 对采样区域进行pooling，保持pool_size不变
+                # Apply pooling to sampled regions, keep pool_size unchanged
                 if len(sampled_args) > 0:
                     pooled_res = pooling(res_values, (pool_size, pool_size))
                 else:

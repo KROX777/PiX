@@ -1,27 +1,53 @@
+"""
+NumPy utility functions for numerical computation.
+
+Provides utilities for:
+    - Gradient computation via finite differences
+    - Array pooling and downsampling
+    - Numerical derivatives and smoothing
+"""
+
+from typing import List, Union, Tuple
 import numpy as np
-from .finite_diff import FiniteDiffVand
 
-def np_grad(arr_list, grids, is_time_grad=False):
+from pix.utils.finite_diff import FiniteDiffVand
+
+
+def np_grad(
+    arr_list: Union[np.ndarray, List[np.ndarray]],
+    grids: Tuple[np.ndarray, ...],
+    is_time_grad: bool = False
+) -> List[np.ndarray]:
     """ 
-    Spacial or temporal gradient of np arrays.
-    Input:
-        arr_list: A single or a list of len(grids)-dim np.ndarray, the matrices to take gradient, each arr.shape=(nx, ny, (nz), nt)
-        grids: list of 1-dim np.ndarray, spacial and temporal grids. grids=[x,y,(z),t], x.shape = (nx,).
-        is_time_grad: Boolean. True->return temporal gradient only, False->return spacial gradient only
-    Output:
-        ret: list of len(grids)-dim np.ndarray, resulting gradients, length=len(arr_list)*(len(grids)-1).
-
-    e.g. Input: arr_list =[u, v], grids=(x,y,t), is_time_grad=False
-        Output: [Derivative(u(x, y, t), x), Derivative(v(x, y, t), x), Derivative(u(x, y, t), y), Derivative(v(x, y, t), y)]
-    e.g. Input: arr_list =[u, v], grids=(x,y,t), is_time_grad=True
-        Output: [Derivative(u(x, y, t), t), Derivative(v(x, y, t), t)]
+    Compute spatial or temporal gradient of NumPy arrays.
+    
+    Uses finite difference methods to compute derivatives along coordinate axes.
+    
+    Args:
+        arr_list: Single or list of N-dimensional arrays to differentiate.
+                  Each array shape: (nx, ny, [nz], nt)
+        grids: Tuple of 1-D coordinate arrays for each dimension.
+               Example: (x_grid, y_grid, t_grid) with shapes (nx,), (ny,), (nt,)
+        is_time_grad: If True, compute temporal derivatives only.
+                      If False, compute spatial derivatives only.
+    
+    Returns:
+        List of gradient arrays. For each input array and each gradient axis,
+        one output array of same shape as input.
+        
+    Examples:
+        >>> u = np.random.rand(10, 10, 5)  # 2D field at 5 time steps
+        >>> grids = (np.linspace(0,1,10), np.linspace(0,1,10), np.linspace(0,1,5))
+        >>> du_dx, du_dy = np_grad(u, grids, is_time_grad=False)  # spatial gradients
+        >>> du_dt = np_grad(u, grids, is_time_grad=True)[0]  # temporal gradient
     """
-    if not isinstance(arr_list, list): #for single array.
+    if not isinstance(arr_list, list):
         arr_list = [arr_list]
     ret = []
     
     for axis_idx, grid in enumerate(grids):
-        if is_time_grad ^ (axis_idx == len(grids)-1): #skip time or spacial gradients.
+        # Skip temporal derivatives if not requested, skip spatial if temporal requested
+        if is_time_grad ^ (axis_idx == len(grids)-1):
             continue
         dx = grid[1] - grid[0]
         

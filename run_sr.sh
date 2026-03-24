@@ -1,1 +1,0 @@
-python pix/single_test.py 0,1,2,4,5,7,8,10,14,15,32 bfsearch_new_sr

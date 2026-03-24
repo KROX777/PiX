@@ -1,19 +1,61 @@
+"""
+Data loading and preprocessing module for PiX.
+
+Provides utilities for loading and processing observational data,
+including grid-based data from CSV files and NPZ format.
+"""
+
+from typing import List, Tuple, Optional, Dict, Any
+import logging
+
 import numpy as np
 import pandas as pd
+
 from pix.utils.numpy_utils import np_grad
-import time
+
+logger = logging.getLogger(__name__)
+
 
 class DataLoader:
-    def __init__(self, config):
+    """
+    Load and preprocess PDE observational data from various formats.
+    
+    Supports loading data from CSV files and NPZ archives. Automatically
+    handles grid creation for spatial and temporal dimensions.
+    
+    Attributes:
+        config: Configuration object containing problem definition.
+        spatial_vars: List of spatial variable names (e.g., 'x', 'y', 'z').
+        field_vars: List of field variable names to be discovered.
+        field_data: List of numpy arrays containing the field data.
+        temporal_vars: List of temporal variable names (e.g., 't').
+        grids: Tuple of coordinate grids for each dimension.
+        u: Main data array shaped as (grid_dims..., num_fields).
+    """
+    
+    def __init__(self, config: Dict[str, Any]) -> None:
+        """
+        Initialize DataLoader.
+        
+        Args:
+            config: Configuration dictionary with problem definition.
+        """
         self.config = config
-        self.spatial_vars = [] # str
-        self.field_vars = []   # str - variable names
-        self.field_data = []   # numpy arrays - actual data
-        self.temporal_vars = []
-        self.u = None
-        self.grids = None
+        self.spatial_vars: List[str] = []
+        self.field_vars: List[str] = []
+        self.field_data: List[np.ndarray] = []
+        self.temporal_vars: List[str] = []
+        self.u: Optional[np.ndarray] = None
+        self.grids: Optional[Tuple[np.ndarray, ...]] = None
 
-    def from_csv(self, csv_path, verbose=False):
+    def from_csv(self, csv_path: str, verbose: bool = False) -> None:
+        """
+        Load data from CSV file and create structured grid.
+        
+        Args:
+            csv_path: Path to CSV file.
+            verbose: Whether to print progress information.
+        """
         df = pd.read_csv(csv_path)
         variables = self.config.problem['variables']
 
@@ -22,7 +64,7 @@ class DataLoader:
 
         grids = []
         temporal_data = None
-        data_to_grid_id = [] # 空间变量顺序按照数据中的出现顺序
+        data_to_grid_id = []
         for var in variables:
             data = df[var].values
             if var == 't' or var.lower() == 'time':
@@ -42,12 +84,14 @@ class DataLoader:
             if temporal_data is not None:
                 grids.append(temporal_data)
         self.grids = tuple(grids)
-        self.u = np.zeros(tuple(len(g) for g in grids) + (len(self.field_vars),), dtype=np.float64)
+        self.u = np.zeros(
+            tuple(len(g) for g in grids) + (len(self.field_vars),),
+            dtype=np.float64
+        )
         check_grid = np.zeros_like(self.u, dtype=bool)
         for index, row in df.iterrows():
             for i, var in enumerate(self.field_vars):
                 if var in row:
-                    value = row[var]
                     if np.isnan(value):
                         continue
                     grid_indices = [data_to_grid_id[j][row[spatial_var]] for j, spatial_var in enumerate(self.spatial_vars)]

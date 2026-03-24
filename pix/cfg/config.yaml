@@ -10,7 +10,7 @@ hydra:
 
 method: mcts  # 可选: bfsearch, mcts
 dataset_path: pix/data/4Untitled_v_up_0.5_v_bottom_0.5_ggg_0_2d_grid.npz
-#
+
 verbose: True
 n_jobs: 10
 

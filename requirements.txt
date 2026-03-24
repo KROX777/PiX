@@ -39,7 +39,6 @@ gmpy2==2.2.1
 gsw==3.6.19
 h11==0.16.0
 h2==4.3.0
-hippylib==3.1.0
 hpack==4.1.0
 httpcore==1.0.9
 httpx==0.28.1

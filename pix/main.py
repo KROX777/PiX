@@ -1,29 +1,48 @@
+"""
+Main entry point for PiX PDE discovery system.
+
+This module provides the primary interface for running PDE system discovery
+using different algorithms (BFSearch, MCTS, etc.).
+"""
+
 import sys
 import os
-import hydra
 import logging
 from pathlib import Path
-from omegaconf import OmegaConf
-import warnings
+from typing import Optional
+
+import hydra
 import numpy as np
+from omegaconf import OmegaConf, DictConfig
+import warnings
+
+# Setup paths
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
-
-from utils.numpy_utils import pooling
-import sympy as sp
-
 ROOT_DIR = os.getcwd()
 sys.path.append(ROOT_DIR)
 
+# Import core components
 from methods.BFSearch import k_fold_cv_bfs
 from methods.MCTS import MCTS
-from hypotheses_tree import HypothesesTree
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-def run_bfsearch(cfg):
-    print("\n=== 运行 BFSearch ===")
+
+def run_bfsearch(cfg: DictConfig) -> None:
+    """
+    Execute BFSearch algorithm for PDE discovery.
+    
+    Args:
+        cfg: Hydra configuration object containing search parameters.
+    """
+    logger.info("Starting BFSearch algorithm")
+    print("\n=== Running BFSearch ===")
     
     k_fold_cv_bfs(
         cfg=cfg,
@@ -33,47 +52,93 @@ def run_bfsearch(cfg):
         verbose=cfg.verbose,
         time_limit=cfg.time_limit
     )
+    
+    logger.info("BFSearch completed successfully")
 
-def run_mcts(cfg):
-    print("\n=== 运行 MCTS ===")
-    tree = MCTS(cfg=cfg, 
-                root_dir=ROOT_DIR, 
-                exploration_weight=cfg.exploration_weight,
-                max_rollout=cfg.max_rollout,
-                n_jobs=cfg.n_jobs,
-                verbose_level=cfg.verbose_level)
-    tree.k_fold_cv_search()
+
+def run_mcts(cfg: DictConfig) -> Optional[dict]:
+    """
+    Execute MCTS algorithm for PDE discovery.
+    
+    Args:
+        cfg: Hydra configuration object containing search parameters.
+        
+    Returns:
+        Results dictionary from MCTS search, or None if failed.
+    """
+    logger.info("Starting MCTS algorithm")
+    print("\n=== Running MCTS ===")
+    
+    tree = MCTS(
+        cfg=cfg, 
+        root_dir=ROOT_DIR, 
+        exploration_weight=cfg.exploration_weight,
+        max_rollout=cfg.max_rollout,
+        n_jobs=cfg.n_jobs,
+        verbose_level=cfg.verbose_level
+    )
+    results = tree.k_fold_cv_search()
+    
+    logger.info("MCTS completed successfully")
+    return results
+
 
 @hydra.main(version_base=None, config_path="cfg", config_name="config")
-def main(cfg):
+def main(cfg: DictConfig) -> None:
+    """
+    Main entry point for PiX PDE discovery system.
+    
+    Configurable via Hydra with parameters in pix/cfg/config.yaml.
+    Supports multiple discovery algorithms (bfsearch, mcts, etc.).
+    
+    Args:
+        cfg: Hydra configuration object.
+    """
+    # Suppress warnings
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     
+    # Log execution environment
     workspace_dir = Path.cwd()
-    logger.info(f"工作空间: {workspace_dir}")
-    logger.info(f"项目根目录: {ROOT_DIR}")
+    logger.info(f"Workspace: {workspace_dir}")
+    logger.info(f"Project root: {ROOT_DIR}")
+    
+    # Parse method selection
     method = cfg.method.lower()
     
-    print("=== PiX 科学发现系统 ===")
-    print(f"数据集: {cfg.dataset_path}")
-    print(f"问题类型: {cfg.problem.name}")
-    print(f"方法: {method}")
+    # Print system information
+    print("=" * 50)
+    print("=== PiX Scientific Discovery System ===")
+    print("=" * 50)
+    print(f"Dataset: {cfg.dataset_path}")
+    print(f"Problem type: {cfg.problem.name}")
+    print(f"Method: {method}")
+    print("=" * 50 + "\n")
 
+    # Execute selected method
     if method == 'bfsearch':
         run_bfsearch(cfg)
     elif method == 'mcts':
         try:
             results = run_mcts(cfg)
-            print(f"\nMCTS 成功完成，找到 {len(results)} 个结果")
+            if results:
+                print(f"\nMCTS completed successfully, found {len(results)} results")
+            else:
+                print("\nMCTS execution completed with no results")
         except Exception as e:
-            print(f"MCTS 运行失败: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"MCTS execution failed: {e}", exc_info=True)
+            print(f"MCTS execution failed: {e}")
+            raise
     else:
-        print(f"未知的方法: {method}")
-        print("支持的方法: 'bfsearch', 'mcts'")
+        logger.error(f"Unknown method: {method}")
+        print(f"Unknown method: {method}")
+        print("Supported methods: 'bfsearch', 'mcts'")
         return
     
-    print("\n=== 程序完成 ===")
+    print("\n" + "=" * 50)
+    print("=== Program completed ===")
+    print("=" * 50 + "\n")
+
 
 if __name__ == "__main__":
     main()
+

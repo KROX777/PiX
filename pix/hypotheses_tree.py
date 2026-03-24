@@ -1,9 +1,59 @@
-from pix.calculator import Calculator
-import sympy as sp
+"""
+Hypothesis tree structures for managing PDE discovery hypotheses.
+
+Provides tree-based representations for organizing physics hypotheses
+and their relationships in a hierarchical decision structure.
+"""
+
+from typing import List, Dict, Optional, Tuple, Any
+import logging
 import copy
 
+import sympy as sp
+
+from pix.calculator import Calculator
+
+logger = logging.getLogger(__name__)
+
+
 class TreeNode:
-    def __init__(self, id, name=None, father_node=None, equation=None, constraints=None, related_variables=None, definitions=None):
+    """
+    Represents a single hypothesis node in the decision tree.
+    
+    Attributes:
+        id: Unique identifier for this node.
+        name: Human-readable name for this hypothesis.
+        father_node: ID of parent node.
+        equation: List of symbolic equations for this hypothesis.
+        constraints: List of constraints on variables.
+        related_variables: List of variable names involved in hypothesis.
+        definitions: List of derived quantity definitions.
+        activated: Whether this node is currently active.
+        children_nodes: List of child node IDs.
+    """
+    
+    def __init__(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        father_node: Optional[int] = None,
+        equation: Optional[List[str]] = None,
+        constraints: Optional[List[str]] = None,
+        related_variables: Optional[List[str]] = None,
+        definitions: Optional[List[str]] = None
+    ) -> None:
+        """
+        Initialize TreeNode.
+        
+        Args:
+            id: Unique node identifier.
+            name: Node name/description.
+            father_node: Parent node ID.
+            equation: List of equations for this hypothesis.
+            constraints: List of constraints.
+            related_variables: List of related variables.
+            definitions: List of definitions.
+        """
         self.id = id
         self.name = name
         self.father_node = father_node
@@ -12,10 +62,15 @@ class TreeNode:
         self.related_variables = related_variables if related_variables is not None else []
         self.definitions = definitions if definitions is not None else []
         self.activated = False
-        self.children_nodes = []  # List of child node IDs
+        self.children_nodes: List[int] = []
 
-    def __repr__(self):
-        return f"TreeNode(name={self.name}, father_node={self.father_node}, equation={self.equation}, constraints={self.constraints}, related_variables={self.related_variables})"
+    def __repr__(self) -> str:
+        return (
+            f"TreeNode(name={self.name}, father_node={self.father_node}, "
+            f"equation={self.equation}, constraints={self.constraints}, "
+            f"related_variables={self.related_variables})"
+        )
+    
     
 class LightTree:
     """
@@ -90,11 +145,11 @@ class LightTree:
 
     def _cartesian_product(self, all_subtree_paths, current_combination, index, result):
         """
-        计算所有子树路径的笛卡尔积
+        Calculate Cartesian product of all subtree paths
         
         Args:
-            all_subtree_paths: 每个根子节点的所有可能路径
-            current_combination: 当前正在构建的组合
+            all_subtree_paths: All possible paths for each root child node
+            current_combination: Currently building combination
             index: 当前处理的根子节点索引
             result: 存储所有结果的列表
         """

@@ -1,33 +1,62 @@
+"""
+SymPy utility functions for symbolic computation.
+
+Provides wrappers and helper functions for SymPy operations including:
+    - Tensor operations (gradients, contractions, products)
+    - Expression simplification with timeout protection
+    - Differential operator utilities
+"""
+
 import signal
+from typing import Optional, Union, Tuple, Any
 import sympy as sp
-from sympy import derive_by_array as ts_grad  #gradient
-from sympy import tensorcontraction as ts_contr  #summation
+from sympy import derive_by_array as ts_grad
+from sympy import tensorcontraction as ts_contr
 from sympy import tensorproduct as ts_prod 
 from sympy import transpose as ts_trans
 
+
 class TimeoutError(Exception):
+    """Raised when a symbolic operation exceeds time limit."""
     pass
 
-def handler(signum, frame):
-    raise TimeoutError("Simplification process took too long")
 
-def sp_simplify_with_timeout(expr, timeout=3):
+def handler(signum: int, frame: Any) -> None:
+    """Signal handler for timeout exceptions."""
+    raise TimeoutError("Symbolic operation exceeded time limit")
+
+
+def sp_simplify_with_timeout(
+    expr: Union[sp.Expr, int, float],
+    timeout: int = 3
+) -> Union[sp.Expr, int, float]:
     """ 
-    Simplification for both Int and sp.expr, with time limitation 
-    and also catch NotImplementedError (err msg: Improve MV Derivative support in collect)
+    Simplify symbolic expression with timeout protection.
+    
+    Useful for preventing infinite loops or excessively long computations
+    during symbolic simplification.
+    
+    Args:
+        expr: SymPy expression or numeric value to simplify.
+        timeout: Maximum time in seconds allowed for simplification.
+        
+    Returns:
+        Simplified expression or original value if simplification fails.
     """
-    if hasattr(expr, "simplify"):   
-        try:
-            signal.signal(signal.SIGALRM, handler)
-            signal.alarm(timeout)
-        except ValueError:
-            # Cannot set signal in non-main thread
-            return expr.simplify()
+    if not hasattr(expr, "simplify"):   
+        return expr
+        
+    try:
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(timeout)
+    except (ValueError, OSError):
+        # Cannot set signal in non-main thread
+        return expr.simplify() if hasattr(expr, "simplify") else expr
 
-        try:
-            simplified = expr.simplify()
-            signal.alarm(0)
-            return simplified
+    try:
+        simplified = expr.simplify() if hasattr(expr, "simplify") else expr
+        signal.alarm(0)
+        return simplified
         except Exception:
             signal.alarm(0)
             return expr

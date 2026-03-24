@@ -225,7 +225,7 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None,
             batch_results = opt_LSO.fit_func()
 
     # Extract candidate results
-    def build_candidate_from_tree(predicted_tree, r2_final, mse_val):
+    def build_candidate_from_tree(predicted_tree, r2_final, mse_val, latent=None):
         skeleton_expr = None
         skeleton_placeholders = []
         skeleton_values = []
@@ -258,7 +258,7 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None,
                 skeleton_expr = env.simplifier.tree_to_sympy_expr(skeleton_tree)
             except Exception as err:
                 print(f"Warning: failed to extract SNIP skeleton for candidate: {err}")
-        return {
+        entry = {
             'expr': best_expr,
             'mse': mse_val,
             'r2': r2_final,
@@ -268,7 +268,11 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None,
             'predicted_tree': predicted_tree,
             'skeleton_tree': skeleton_tree
         }
+        if latent is not None:
+            entry['latent'] = latent
+        return entry
 
+    plot_latent = getattr(cfg, 'plot_latent', False)
     candidates = []
     candidate_records = batch_results.get("_candidate_records")
     if candidate_records:
@@ -279,7 +283,8 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None,
             mse_val = rec.get('mse')
             if mse_val is None:
                 mse_val = (1.0 - r2_val) * y_var if r2_val < 1.0 else 1e-10
-            candidates.append(build_candidate_from_tree(tree, r2_val, mse_val))
+            latent_vec = rec.get('latent')
+            candidates.append(build_candidate_from_tree(tree, r2_val, mse_val, latent=latent_vec))
     else:
         r2_key = 'r2_zero_direct_fit'
         if r2_key not in batch_results or len(batch_results[r2_key]) == 0:
@@ -303,6 +308,28 @@ def run_snip_symbolic_regression(x_arr, y_arr, cfg, ckpt_path=None, device=None,
 
     if candidates:
         print(f"LSO optimization complete: collected top-{len(candidates)} candidates (best R2={candidates[0]['r2']:.6f})")
+        if plot_latent:
+            try:
+                latent_points = [c.get('latent') for c in candidates if c.get('latent') is not None]
+                if latent_points:
+                    latent_arr = np.array(latent_points, dtype=np.float32)
+                    from sklearn.manifold import TSNE
+                    import matplotlib.pyplot as plt
+                    perplexity = min(30.0, max(5.0, (latent_arr.shape[0] - 1) / 3))
+                    tsne = TSNE(n_components=2, perplexity=perplexity, init="pca",
+                                learning_rate="auto", random_state=42)
+                    coords = tsne.fit_transform(latent_arr)
+                    colors = [c['r2'] for c in candidates if c.get('latent') is not None]
+                    plt.figure(figsize=(6, 5))
+                    sc = plt.scatter(coords[:, 0], coords[:, 1], c=colors,
+                                     cmap="viridis", s=80, edgecolors='k')
+                    plt.colorbar(sc, label="$R^2$")
+                    plt.title("CLOSR-PDE Latent Visualization")
+                    plt.tight_layout()
+                    plt.savefig("tsne_latent.png", dpi=300)
+                    print("Saved t-SNE visualization of latent vectors to tsne_latent.png")
+            except Exception as plot_err:
+                print(f"[Plot warning] Failed to generate latent visualization: {plot_err}")
         return candidates[:top_k]
     else:
         raise RuntimeError('LSO optimization failed to produce valid results')

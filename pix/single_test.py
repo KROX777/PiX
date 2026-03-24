@@ -1,13 +1,29 @@
 """
-Single Test Script for PiX
-Users can input hypothesis IDs and run targeted tests.
+Single test script for targeted PDE discovery evaluation.
+
+This module provides utilities for running individual hypothesis tests
+and debugging specific hypothesis combinations without running full searches.
+
+Features:
+    - Validate hypothesis combinations
+    - Run single or combined hypothesis tests
+    - Interactive testing interface
+    - Module cache clearing for clean test execution
+    - Detailed result logging
 """
+
 import sys
 import os
 import time
-import hydra
 import logging
 from pathlib import Path
+from typing import List, Tuple, Optional, Dict, Any
+
+import hydra
+from omegaconf import OmegaConf, DictConfig
+import warnings
+import numpy as np
+import pprint
 from omegaconf import OmegaConf
 import warnings
 import numpy as np
@@ -45,44 +61,44 @@ def validate_hypothesis_combination(cfg, hypothesis_ids):
     all_valid_combinations = light_tree.generate_all_possibilities()
 
     if hypothesis_ids in all_valid_combinations:
-        return True, "组合有效", []
+        return True, "Combination is valid", []
 
     error_messages = []
     suggestions = []
-    node_to_branch = {}  # 记录每个根分支下选择的节点
+    node_to_branch = {}  # Record which node is selected for each root branch
     
     for hyp_id in hypothesis_ids:
         if hyp_id == 0:
-            continue  # 跳过根节点
+            continue  # Skip root node
 
         root_branch = find_root_branch(light_tree, hyp_id)
         if root_branch not in node_to_branch:
             node_to_branch[root_branch] = []
         node_to_branch[root_branch].append(hyp_id)
     
-    # 检查每个分支是否只有一个有效路径
+    # Check if each branch has only one valid path
     for branch, selected_nodes in node_to_branch.items():
         branch_paths = light_tree._get_all_paths_from_node(branch)
         
-        # 检查选择的节点是否构成一个有效路径
+        # Check if selected nodes form a valid path
         valid_path_found = False
         for path in branch_paths:
             if set(selected_nodes).issubset(set(path)):
-                # 检查是否选择了完整路径（到叶子节点）
-                if selected_nodes[-1] == path[-1]:  # 最后一个是叶子节点
+                # Check if a complete path is selected (to leaf node)
+                if selected_nodes[-1] == path[-1]:  # Last node is leaf node
                     valid_path_found = True
                     break
         
         if not valid_path_found:
             branch_node = light_tree.nodes[branch]
-            error_messages.append(f"分支 '{branch_node.name}' (ID: {branch}) 的选择无效")
+            error_messages.append(f"Branch '{branch_node.name}' (ID: {branch}) selection is invalid")
             
-            # 提供该分支的有效选择
+            # Provide valid selections for this branch
             for path in branch_paths:
                 path_names = [light_tree.nodes[nid].name for nid in path]
-                suggestions.append(f"分支 {branch_node.name}: {' -> '.join(path_names)} (IDs: {path})")
+                suggestions.append(f"Branch {branch_node.name}: {' -> '.join(path_names)} (IDs: {path})")
     
-    # 检查是否遗漏了某些必需的分支
+    # Check if any required branches are missing
     root_children = light_tree.root.children_nodes
     selected_branches = set(node_to_branch.keys())
     missing_branches = set(root_children) - selected_branches
@@ -90,17 +106,17 @@ def validate_hypothesis_combination(cfg, hypothesis_ids):
     if missing_branches:
         for branch_id in missing_branches:
             branch_node = light_tree.nodes[branch_id]
-            error_messages.append(f"缺少分支 '{branch_node.name}' (ID: {branch_id}) 的选择")
+            error_messages.append(f"Missing branch '{branch_node.name}' (ID: {branch_id}) selection")
     
-    error_message = "; ".join(error_messages) if error_messages else "未知验证错误"
+    error_message = "; ".join(error_messages) if error_messages else "Unknown validation error"
     
-    return False, error_message, suggestions[:5]  # 最多显示5个建议
+    return False, error_message, suggestions[:5]  # Show at most 5 suggestions
 
 def find_root_branch(light_tree, node_id):
     current_id = node_id
     while current_id != 0:
         node = light_tree.nodes[current_id]
-        if node.father_node == 0:  # 这是根的直接子节点
+        if node.father_node == 0:  # This is direct child of root
             return current_id
         current_id = node.father_node
     return 0
@@ -112,7 +128,7 @@ def get_valid_combinations_sample(cfg, max_samples=5):
         light_tree = LightTree(cfg, ROOT_DIR)
         all_valid = light_tree.generate_all_possibilities()
         
-        # 返回前几个示例
+        # Return first few samples
         samples = []
         for i, combo in enumerate(all_valid[:max_samples]):
             combo_names = [light_tree.nodes[nid].name for nid in combo if nid != 0]
@@ -124,17 +140,17 @@ def get_valid_combinations_sample(cfg, max_samples=5):
         
         return samples
     except Exception as e:
-        print(f"获取有效组合示例时出错: {e}")
+        print(f"Error retrieving valid combination samples: {e}")
         return []
 
 def clear_module_cache():
     """
-    清理Python模块缓存，确保重新导入时获得干净状态
+    Clear Python module cache to ensure clean state on reimport
     """
     import sys
     modules_to_clear = []
     
-    # 找到需要清理的模块
+    # Find modules to clear
     for module_name in sys.modules.keys():
         if (module_name.startswith('pix.') or 
             module_name.startswith('methods.') or
@@ -143,24 +159,24 @@ def clear_module_cache():
             module_name.startswith('data_loader')):
             modules_to_clear.append(module_name)
     
-    # 清理模块
+    # Clear modules
     for module_name in modules_to_clear:
         if module_name in sys.modules:
             del sys.modules[module_name]
 
 def reload_config():
     """
-    重新加载配置文件，确保获得干净的配置状态
+    Reload config file to ensure clean state
     
     Returns:
-        OmegaConf: 配置对象，如果失败返回None
+        OmegaConf: Config object, returns None if failed
     """
     try:
-        # 重新加载主配置
+        # Reload main config
         config_path = os.path.join(project_root, "cfg", "config.yaml")
         cfg = OmegaConf.load(config_path)
         
-        # 重新加载问题配置
+        # Reload problem config
         problem_name = "Fluid Mechanics"
         problem_config_path = os.path.join(project_root, "cfg", "problem", f"{problem_name}.yaml")
         
@@ -168,7 +184,7 @@ def reload_config():
             problem_cfg = OmegaConf.load(problem_config_path)
             cfg.problem = problem_cfg
         else:
-            print(f"错误: 找不到问题配置文件 {problem_config_path}")
+            print(f"Error: Cannot find problem config file {problem_config_path}")
             return None
             
         return cfg
@@ -198,7 +214,7 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
         # 重新加载配置以确保是干净的状态
         fresh_cfg = reload_config()
         if fresh_cfg is None:
-            print("错误: 无法重新加载配置")
+            print("Error: Cannot reload config")
             return None
 
         logger.info("开始单次测试 | 模式=%s | 假设=%s", mode, hypothesis_ids)
