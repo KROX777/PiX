@@ -1,7 +1,5 @@
 /pix/data
 .DS_Store
-**/.DS_Store
-*.DS_Store
 pix/methods/SR4MDL/weights/checkpoint.pth
 
 *.pyc

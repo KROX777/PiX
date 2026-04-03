@@ -57,9 +57,9 @@ def sp_simplify_with_timeout(
         simplified = expr.simplify() if hasattr(expr, "simplify") else expr
         signal.alarm(0)
         return simplified
-        except Exception:
-            signal.alarm(0)
-            return expr
+    except Exception:
+        signal.alarm(0)
+        return expr
     return expr
 
 def dot(tensor1, tensor2):

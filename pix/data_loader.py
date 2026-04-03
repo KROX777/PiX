@@ -117,7 +117,7 @@ class DataLoader:
             return
         
         if datasource == "COMSOL":
-            data = np.load(dataset_path)
+            data = np.load(dataset_path, allow_pickle=True)
             grids = []
             t_array = None
             for var in variables:

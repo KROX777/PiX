@@ -189,12 +189,12 @@ def reload_config():
             
         return cfg
     except Exception as e:
-        print(f"重新加载配置时出错: {e}")
+        print(f"Error reloading config: {e}")
         return None
 
 def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearch", verbose=True):
-    print(f"\n=== 运行单个测试 (模式: {mode}) ===")
-    print(f"假设编号组合: {hypothesis_ids}")
+    print(f"\n=== Running single test (mode: {mode}) ===")
+    print(f"Hypothesis ID combination: {hypothesis_ids}")
     
     try:
         import gc
@@ -206,18 +206,18 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
         elif mode.lower() == "bfsearch_new_sr":
             from pix.methods.BFSearch_new_SR import single_test
         else:
-            print(f"错误: 未知的模式 '{mode}'，支持的模式: 'bfsearch', 'bfsearch_new_sr'")
+            print(f"Error: Unknown mode '{mode}'. Supported modes: 'bfsearch', 'bfsearch_new_sr'")
             return None
             
         from hypotheses_tree import HypothesesTree
         
-        # 重新加载配置以确保是干净的状态
+        # Reload config to ensure clean state
         fresh_cfg = reload_config()
         if fresh_cfg is None:
             print("Error: Cannot reload config")
             return None
 
-        logger.info("开始单次测试 | 模式=%s | 假设=%s", mode, hypothesis_ids)
+        logger.info("Starting single test | mode=%s | hypotheses=%s", mode, hypothesis_ids)
 
         result = single_test(
             cfg=fresh_cfg,
@@ -229,16 +229,16 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
         )
         
         if result is not None:
-            print("\n=== 测试结果 ===")
-            print(f"训练损失: {result['train_loss']:.6f}")
-            print(f"验证损失: {result['valid_loss']:.6f}")
-            print(f"假设组合: {result['deci_list']}")
-            print(f"用时: {result['time']:.2f} 秒")
-            print(f"迭代次数: {result['nit']}")
-            print(f"状态: {result['status']}")
+            print("\n=== Test Results ===")
+            print(f"Training loss: {result['train_loss']:.6f}")
+            print(f"Validation loss: {result['valid_loss']:.6f}")
+            print(f"Hypothesis combination: {result['deci_list']}")
+            print(f"Time elapsed: {result['time']:.2f} seconds")
+            print(f"Iterations: {result['nit']}")
+            print(f"Status: {result['status']}")
             try:
                 logger.info(
-                    "测试完成 | 训练损失=%.6f | 验证损失=%.6f | 假设组合=%s | 用时=%.2fs | 迭代=%s | 状态=%s",
+                    "Test completed | train_loss=%.6f | valid_loss=%.6f | hypothesis=%s | time=%.2fs | iterations=%s | status=%s",
                     result.get('train_loss', float('nan')),
                     result.get('valid_loss', float('nan')),
                     result.get('deci_list'),
@@ -250,69 +250,69 @@ def run_single_test_with_hypotheses(cfg, root_dir, hypothesis_ids, mode="bfsearc
                 pass
             
             if verbose and 'params' in result:
-                print("\n参数值:")
+                print("\nParameter values:")
                 pprint.pprint(result['params'])
                 
             if 'train_mse_list' in result:
-                print(f"\n训练 MSE 列表: {result['train_mse_list']}")
-                print(f"验证 MSE 列表: {result['valid_mse_list']}")
+                print(f"\nTraining MSE list: {result['train_mse_list']}")
+                print(f"Validation MSE list: {result['valid_mse_list']}")
                 
         else:
-            print("测试失败，返回结果为 None")
-            logger.warning("测试失败，返回结果为 None | 模式=%s | 假设=%s", mode, hypothesis_ids)
+            print("Test failed, result is None")
+            logger.warning("Test failed, result is None | mode=%s | hypotheses=%s", mode, hypothesis_ids)
             
         return result
         
     except Exception as e:
-        print(f"测试过程中出现错误: {e}")
+        print(f"Error occurred during testing: {e}")
         import traceback
         traceback.print_exc()
-        logger.exception("测试过程中出现错误: %s", e)
+        logger.exception("Error occurred during testing: %s", e)
         return None
 
 def show_available_hypotheses(cfg):
     """
-    显示所有可用的假设及其描述
+    Display all available hypotheses and their descriptions.
     
     Args:
-        cfg: 配置对象
+        cfg: Configuration object.
     """
-    print("\n=== 可用假设列表 ===")
+    print("\n=== Available Hypotheses ===")
     
     if 'hypotheses' in cfg.problem:
         for hypothesis in cfg.problem.hypotheses:
-            print(f"ID: {hypothesis.id:2d} | 名称: {hypothesis.name}")
+            print(f"ID: {hypothesis.id:2d} | Name: {hypothesis.name}")
             if hypothesis.get('related_variables'):
-                print(f"    相关变量: {hypothesis.related_variables}")
+                print(f"    Related variables: {hypothesis.related_variables}")
             if hypothesis.get('definitions'):
-                print(f"    定义: {hypothesis.definitions}")
+                print(f"    Definitions: {hypothesis.definitions}")
             if hypothesis.get('require_sr'):
-                print(f"    需要符号回归: {hypothesis.require_sr}")
+                print(f"    Requires symbolic regression: {hypothesis.require_sr}")
             print()
     else:
-        print("错误: 配置中没有找到假设列表")
+        print("Error: Hypothesis list not found in configuration")
 
 def select_test_mode():
-    print("\n=== 选择测试模式 ===")
+    print("\n=== Select Test Mode ===")
     print("1. BFSearch")
     print("2. BFSearch_new_SR")
     
     while True:
         try:
-            choice = input("\n请选择模式 (1 或 2): ").strip()
+            choice = input("\nSelect mode (1 or 2): ").strip()
             
             if choice == "1":
                 return "bfsearch"
             elif choice == "2":
                 return "bfsearch_new_sr"
             else:
-                print("请输入 1 或 2")
+                print("Please enter 1 or 2")
         except KeyboardInterrupt:
-            print("\n程序已中断")
+            print("\nProgram interrupted")
             return None
 
 def interactive_single_test():
-    print("=== PiX 单个测试工具 ===")
+    print("=== PiX Single Test Tool ===")
     mode = select_test_mode()
     if mode is None:
         return
@@ -320,58 +320,58 @@ def interactive_single_test():
     try:
         cfg = reload_config()
         if cfg is None:
-            print("错误: 无法加载配置")
+            print("Error: Cannot load configuration")
             return
         
-        # 显示可用假设
+        # Display available hypotheses
         show_available_hypotheses(cfg)
         
     except Exception as e:
-        print(f"加载配置时出错: {e}")
+        print(f"Error loading configuration: {e}")
         return
     
-    print(f"\n当前模式: {mode}")
-    print("请输入要测试的假设编号组合")
-    print("示例: 1,3,5 或 [1, 3, 5]")
-    print("输入 'q' 或 'quit' 退出")
-    print("输入 'mode' 切换模式")
-    print("注意: 每次测试都会重新初始化所有组件，确保结果的独立性")
+    print(f"\nCurrent mode: {mode}")
+    print("Enter hypothesis ID combination to test")
+    print("Examples: 1,3,5 or [1, 3, 5]")
+    print("Enter 'q' or 'quit' to exit")
+    print("Enter 'mode' to switch modes")
+    print("Note: Each test reinitializes all components for independent results")
     
     while True:
         try:
-            user_input = input(f"\n[{mode}] 请输入假设编号 (用逗号分隔): ").strip()
+            user_input = input(f"\n[{mode}] Enter hypothesis IDs (comma-separated): ").strip()
             
             if user_input.lower() in ['q', 'quit', 'exit']:
-                print("退出程序")
+                print("Exit program")
                 break
             
             if user_input.lower() == 'mode':
                 new_mode = select_test_mode()
                 if new_mode:
                     mode = new_mode
-                    print(f"已切换到模式: {mode}")
+                    print(f"Switched to mode: {mode}")
                 continue
             
             if not user_input:
                 continue
             
-            # 解析用户输入
+            # Parse user input
             if user_input.startswith('[') and user_input.endswith(']'):
-                # 处理列表格式输入
+                # Handle list format input
                 user_input = user_input[1:-1]
             
-            # 分割并转换为整数
+            # Split and convert to integers
             hypothesis_ids = [int(x.strip()) for x in user_input.split(',') if x.strip()]
             
             if not hypothesis_ids:
-                print("错误: 未输入有效的假设编号")
+                print("Error: No valid hypothesis IDs entered")
                 continue
                 
-            print(f"解析的假设编号: {hypothesis_ids}")
+            print(f"Parsed hypothesis IDs: {hypothesis_ids}")
             
-            # 每次测试都重新运行，确保独立性
+            # Rerun test each time to ensure independence
             result = run_single_test_with_hypotheses(
-                cfg=None,  # 传入None，函数内部会重新加载配置
+                cfg=None,  # Pass None to reload config internally
                 root_dir=ROOT_DIR,
                 hypothesis_ids=hypothesis_ids,
                 mode=mode,
@@ -379,18 +379,18 @@ def interactive_single_test():
             )
             
             if result:
-                print(f"\n✓ 测试完成! 训练损失: {result['train_loss']:.6f}, 验证损失: {result['valid_loss']:.6f}")
+                print(f"\n✓ Test completed! Training loss: {result['train_loss']:.6f}, Validation loss: {result['valid_loss']:.6f}")
             else:
-                print("✗ 测试失败")
+                print("✗ Test failed")
                 
         except ValueError as e:
-            print(f"输入格式错误: {e}")
-            print("请输入有效的数字，用逗号分隔，例如: 1,3,5")
+            print(f"Input format error: {e}")
+            print("Please enter valid numbers, comma-separated, e.g.: 1,3,5")
         except KeyboardInterrupt:
-            print("\n测试已中断")
+            print("\nTest interrupted")
             break
         except Exception as e:
-            print(f"发生错误: {e}")
+            print(f"Error occurred: {e}")
             import traceback
             traceback.print_exc()
 
@@ -398,14 +398,14 @@ def interactive_single_test():
 def main_hydra(cfg):
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     workspace_dir = Path.cwd()
-    logger.info(f"工作空间: {workspace_dir}")
-    logger.info(f"项目根目录: {ROOT_DIR}")
+    logger.info(f"Workspace: {workspace_dir}")
+    logger.info(f"Project root: {ROOT_DIR}")
     
     interactive_single_test()
 
 def test_with_specific_hypotheses(hypothesis_ids, mode="bfsearch"):
     return run_single_test_with_hypotheses(
-        cfg=None,  # 传入None，函数内部会重新加载配置
+        cfg=None,
         root_dir=ROOT_DIR,
         hypothesis_ids=hypothesis_ids,
         mode=mode,
@@ -416,21 +416,21 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1:
-        # 如果有命令行参数，尝试解析为假设编号
+        # If command line args, try to parse as hypothesis IDs
         try:
-            # 检查是否指定了模式
-            mode = "bfsearch"  # 默认模式
+            # Check if mode is specified
+            mode = "bfsearch"  # Default mode
             if len(sys.argv) > 2 and sys.argv[2].lower() in ["bfsearch", "bfsearch_new_sr"]:
                 mode = sys.argv[2].lower()
             
             hypothesis_ids = [int(x) for x in sys.argv[1].split(',')]
-            print(f"从命令行参数获取假设编号: {hypothesis_ids}")
-            print(f"使用模式: {mode}")
+            print(f"Get hypothesis IDs from command line args: {hypothesis_ids}")
+            print(f"Using mode: {mode}")
             result = test_with_specific_hypotheses(hypothesis_ids, mode)
         except ValueError:
-            print("命令行参数格式错误，请使用: python single_test.py 1,3,5 [bfsearch/bfsearch_new_sr]")
-            print("切换到交互式模式...")
+            print("Command line arg format error. Usage: python single_test.py 1,3,5 [bfsearch/bfsearch_new_sr]")
+            print("Switching to interactive mode...")
             interactive_single_test()
     else:
-        # 交互式模式
+        # Interactive mode
         interactive_single_test()

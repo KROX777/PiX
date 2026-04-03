@@ -1,12 +1,22 @@
 """
-物理问题配置助手
-1. 问题名字，简介
-2. 变量名
-3. 常量输入
-4. 导出物理量及定义式（或标注定义式未知、需要枚举假设，标注方法为=?) (请保证到此为止所有变量名都通过变量、常量或定义式方式给出)
-5. 物理定律预输入
-6. 决策树输入，每一行 (假设编号，假设名称, 父节点, 是否需要符号回归, 表达式 (eq: <表达式>), 定义式 (def: [new_var_1; new_var_2; ...] var=...), 限制 (constraint: [var]...>0 / [var]...>=0），某变量与某变量有关（related: var1; var2; var3; var4）
-7. 符号回归的函数库，是否允许嵌套
+Physics problem configuration helper.
+
+Helper for configuring physics discovery problems with the following structure:
+1. Problem name and description
+2. Variable names
+3. Constant values (name=value format)
+4. Derived quantities and their definitions (use ? for unknown definitions requiring hypothesis enumeration)
+5. Known physics equations
+6. Decision tree entries, each row contains:
+   - Hypothesis ID
+   - Hypothesis name
+   - Parent node ID
+   - Requires symbolic regression (true/false)
+   - Optional: Expression (eq: <expression>)
+   - Optional: Definition (def: [new_var_1; new_var_2; ...] var=...)
+   - Optional: Constraints (constraint: [var]...>0 / [var]...>=0)
+   - Optional: Related variables (related: var1; var2; var3; var4)
+7. Symbolic regression function library and nesting configuration
 """
 import csv
 import os
@@ -44,11 +54,11 @@ class PhysicsConfig:
     def from_csv(self, csv_file: str):
         with open(csv_file, 'r', encoding='utf-8') as f:
             lines = [line.rstrip('\n') for line in f if line.strip()]
-        # 1. 问题名字,简介
+        # 1. Problem name and description
         name, description = lines[0].split('|', 1)
-        # 2. 变量名
+        # 2. Variable names
         variables = [v.strip() for v in lines[1].split('|')]
-        # 3. 常量输入（一个变量名=一个值，逗号分隔）
+        # 3. Constants (format: variable_name=value, separated by |)
         constants = {}
         if lines[2] == '(void)':
             constants = {}
@@ -57,7 +67,7 @@ class PhysicsConfig:
                 if '=' in const:
                     var, value = const.split('=', 1)
                     constants[var.strip()] = float(value.strip())
-        # 4. 导出物理量及其定义式（一个变量名=一个定义式，逗号分隔）
+        # 4. Derived quantities and their definitions (format: variable_name=definition, separated by |)
         derived_quantities = {}
         unknown_variables = []
         if len(lines) > 3 and lines[3].strip():
@@ -67,7 +77,7 @@ class PhysicsConfig:
                     if expr.strip() == '?':
                         unknown_variables.append(var.strip())
                     derived_quantities[var.strip()] = expr.strip()
-        # 5. 物理定律
+        # 5. Known physics equations
         known_equations = []
         i = 4
         while i < len(lines) and lines[i].strip():
@@ -76,7 +86,7 @@ class PhysicsConfig:
                 break
             known_equations.append(lines[i].strip())
             i += 1
-        # 6. 决策树输入
+        # 6. Decision tree entries
         decision_tree_rows = []
         while i < len(lines) and lines[i].strip():
             if lines[i] == 'end':
@@ -86,12 +96,12 @@ class PhysicsConfig:
             if len(row) > 1:
                 decision_tree_rows.append(row)
             i += 1
-        # 7. 是否允许嵌套（单独一行）
+        # 7. Allow nesting configuration (single line: yes/no or true/false)
         allow_nesting = False
         if i < len(lines):
-            allow_nesting = '是' in lines[i] or 'true' in lines[i].lower()
+            allow_nesting = 'yes' in lines[i].lower() or 'true' in lines[i].lower()
             i += 1
-        # 8. 符号回归函数库（最后两行：一元函数和二元函数，现仅支持一元）
+        # 8. Symbolic regression function library (unary and binary functions, currently only unary supported)
         unary_functions = []
         binary_functions = []
         if i < len(lines):
@@ -117,15 +127,16 @@ class PhysicsConfig:
         import yaml
         if self.problem is None:
             raise ValueError("Problem is not initialized. Call from_csv() first.")
-        # hypotheses节点转换
+        # Convert hypotheses node
         hypotheses = []
         for row in self.problem.decision_tree_rows:
-            # 假设编号，假设名称, 父节点, 是否需要符号回归, 方程表达式（可选），使得哪个变量与哪个变量有关
+            # Hypothesis ID, name, parent node ID, requires symbolic regression,
+            # optional equation, optional definitions, optional constraints, optional related variables
             node = {
-                'id': int(row[0]) if len(row) > 0 else None, # 1-based
+                'id': int(row[0]) if len(row) > 0 else None,  # 1-based index
                 'name': row[1] if len(row) > 1 else None,
-                'father_node': int(row[2]) if len(row) > 2 else None, # id of father node
-                'require_sr': row[3].lower() in ['true', '1', 'yes', 'y', '是'] if len(row) > 3 else False,
+                'father_node': int(row[2]) if len(row) > 2 else None,  # ID of father node
+                'require_sr': row[3].lower() in ['true', '1', 'yes', 'y'] if len(row) > 3 else False,
                 'equation': [],
                 'definitions': [],
                 'constraints': [],
@@ -143,7 +154,7 @@ class PhysicsConfig:
                     node['related_variables'].append(vars)
             hypotheses.append(node)
             
-        # 组织yaml结构
+        # Organize YAML structure
         problem_dict = {
             'name': self.problem.name,
             'description': self.problem.description,
