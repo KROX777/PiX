@@ -125,7 +125,7 @@ class PDEResidualComputer:
     """
     Computes PDE residuals from symbolic equations using neural networks.
     """
-    def __init__(self, calculator, field_nets, coords, var_names, spatial_vars, temporal_vars):
+    def __init__(self, calculator, field_nets, coords, var_names, spatial_vars, temporal_vars, coeff_names):
         self.calculator = calculator
         self.field_nets = field_nets
         self.coords = coords
@@ -133,6 +133,7 @@ class PDEResidualComputer:
         self.spatial_vars = spatial_vars
         self.temporal_vars = temporal_vars
         self.n_points = coords.shape[0]
+        self.coeff_names = coeff_names  # List of coefficient symbol names
         
         # Map variable names to indices
         self.var_idx = {v: i for i, v in enumerate(var_names)}
@@ -176,13 +177,13 @@ class PDEResidualComputer:
         self.derivative_cache[cache_key] = result
         return result
     
-    def evaluate_expr(self, expr, coeff_values=None):
+    def evaluate_expr(self, expr, coeff_tensor=None):
         """
         Evaluate a sympy expression using neural network values.
         
         Args:
             expr: SymPy expression
-            coeff_values: Dict of coefficient name -> value
+            coeff_tensor: Torch tensor of coefficient values (shape: [n_coeffs])
         
         Returns:
             Torch tensor of evaluated expression
@@ -194,8 +195,14 @@ class PDEResidualComputer:
         # Handle symbols and function applications
         if expr.is_Symbol:
             # Check if it's a coefficient
-            if coeff_values and str(expr) in coeff_values:
-                return torch.full((self.n_points, 1), coeff_values[str(expr)], device=device)
+            if self.coeff_names and str(expr) in self.coeff_names:
+                idx = self.coeff_names.index(str(expr))
+                if coeff_tensor is not None:
+                    # Return as tensor with gradient
+                    val = coeff_tensor[idx]
+                    return val.view(1, 1).expand(self.n_points, 1)
+                else:
+                    return torch.zeros(self.n_points, 1, device=device)
             # Check if it's a coordinate variable
             if str(expr) in self.var_idx:
                 idx = self.var_idx[str(expr)]
@@ -256,7 +263,7 @@ class PDEResidualComputer:
         if expr.__class__.__name__ == 'Add':
             result = torch.zeros(self.n_points, 1, device=device)
             for arg in expr.args:
-                term = self.evaluate_expr(arg, coeff_values)
+                term = self.evaluate_expr(arg, coeff_tensor)
                 # Check for nan/inf
                 if torch.isnan(term).any() or torch.isinf(term).any():
                     continue
@@ -266,14 +273,14 @@ class PDEResidualComputer:
         if expr.__class__.__name__ == 'Mul':
             result = torch.ones(self.n_points, 1, device=device)
             for arg in expr.args:
-                factor = self.evaluate_expr(arg, coeff_values)
+                factor = self.evaluate_expr(arg, coeff_tensor)
                 if torch.isnan(factor).any() or torch.isinf(factor).any():
                     continue
                 result = result * torch.clamp(factor, -1e6, 1e6)
             return result
         
         if expr.__class__.__name__ == 'Pow':
-            base = self.evaluate_expr(expr.args[0], coeff_values)
+            base = self.evaluate_expr(expr.args[0], coeff_tensor)
             exp = float(expr.args[1])
             # Clamp base to prevent numerical issues
             # For fractional exponents (like sqrt), ensure base >= 0
@@ -286,7 +293,7 @@ class PDEResidualComputer:
             return torch.pow(base, exp)
         
         if expr.__class__.__name__ == 'sqrt':
-            arg = self.evaluate_expr(expr.args[0], coeff_values)
+            arg = self.evaluate_expr(expr.args[0], coeff_tensor)
             # Ensure non-negative inside sqrt
             arg = torch.clamp(arg, min=1e-8)
             return torch.sqrt(arg)
@@ -302,7 +309,7 @@ class PDEResidualComputer:
                 # Manually iterate
                 flat_exprs = [expr[i] for i in range(len(expr))]
             for e in flat_exprs:
-                elements.append(self.evaluate_expr(e, coeff_values))
+                elements.append(self.evaluate_expr(e, coeff_tensor))
             # Stack and compute mean of squares (sum of squared residuals)
             stacked = torch.stack(elements, dim=1)
             return (stacked ** 2).mean(dim=1, keepdim=True)
@@ -312,20 +319,20 @@ class PDEResidualComputer:
             elements = []
             for i in range(expr.shape[0]):
                 for j in range(expr.shape[1]):
-                    elements.append(self.evaluate_expr(expr[i, j], coeff_values))
+                    elements.append(self.evaluate_expr(expr[i, j], coeff_tensor))
             return torch.stack(elements, dim=1).mean(dim=1, keepdim=True)
         
         # Handle common functions
         if expr.__class__.__name__ == 'sin':
-            return torch.sin(self.evaluate_expr(expr.args[0], coeff_values))
+            return torch.sin(self.evaluate_expr(expr.args[0], coeff_tensor))
         if expr.__class__.__name__ == 'cos':
-            return torch.cos(self.evaluate_expr(expr.args[0], coeff_values))
+            return torch.cos(self.evaluate_expr(expr.args[0], coeff_tensor))
         if expr.__class__.__name__ == 'exp':
-            return torch.exp(self.evaluate_expr(expr.args[0], coeff_values))
+            return torch.exp(self.evaluate_expr(expr.args[0], coeff_tensor))
         if expr.__class__.__name__ == 'log':
-            return torch.log(self.evaluate_expr(expr.args[0], coeff_values))
+            return torch.log(self.evaluate_expr(expr.args[0], coeff_tensor))
         if expr.__class__.__name__ == 'Abs':
-            return torch.abs(self.evaluate_expr(expr.args[0], coeff_values))
+            return torch.abs(self.evaluate_expr(expr.args[0], coeff_tensor))
         
         # Handle negative numbers
         if expr.__class__.__name__ == 'NegativeOne' or (hasattr(expr, 'is_number') and float(expr) < 0):
@@ -339,9 +346,9 @@ class PDEResidualComputer:
             print(f"Warning: Unknown expression type {type(expr).__name__}: {str(expr)[:50]}")
             return torch.zeros(self.n_points, 1, device=device)
     
-    def compute_residual(self, eq, coeff_values=None):
+    def compute_residual(self, eq, coeff_tensor=None):
         """Compute residual for a single equation."""
-        return self.evaluate_expr(eq, coeff_values)
+        return self.evaluate_expr(eq, coeff_tensor)
 
 
 def optimize_with_pinn_impl(calculator, cfg, deci_list, init_params, mse_func=None):
@@ -441,7 +448,7 @@ def optimize_with_pinn_impl(calculator, cfg, deci_list, init_params, mse_func=No
     
     # Create residual computer
     residual_computer = PDEResidualComputer(
-        calculator, field_nets, coords, var_names, spatial_vars, temporal_vars
+        calculator, field_nets, coords, var_names, spatial_vars, temporal_vars, coeff_names
     )
     
     # Training loop
@@ -454,11 +461,6 @@ def optimize_with_pinn_impl(calculator, cfg, deci_list, init_params, mse_func=No
         
         # Clear derivative cache each epoch
         residual_computer.derivative_cache = {}
-        
-        # Get current coefficient values
-        coeff_values = {}
-        if n_coeffs > 0:
-            coeff_values = {name: coeffs[i].item() for i, name in enumerate(coeff_names)}
         
         # Data loss
         loss_data = torch.tensor(0.0, device=device)
@@ -474,7 +476,7 @@ def optimize_with_pinn_impl(calculator, cfg, deci_list, init_params, mse_func=No
         
         for i, eq in enumerate(calculator.sp_equation):
             try:
-                residual = residual_computer.compute_residual(eq, coeff_values)
+                residual = residual_computer.compute_residual(eq, coeffs)
                 eq_loss = torch.mean(residual**2)
                 eq_losses.append(eq_loss.item())
                 loss_pde += eq_loss
