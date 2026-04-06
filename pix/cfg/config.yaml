@@ -11,6 +11,12 @@ hydra:
 method: mcts  # 可选: bfsearch, mcts
 dataset_path: pix/data/4Untitled_v_up_0.5_v_bottom_0.5_ggg_0_2d_grid.npz
 
+coefficient_optimizer: "scipy" # Options: scipy, pinn
+pinn_config:
+  epochs: 100
+  learning_rate: 1e-3
+  pde_loss_weight: 0.01
+
 verbose: True
 n_jobs: 10
 

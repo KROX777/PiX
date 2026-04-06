@@ -12,6 +12,7 @@ import random
 from pix.hypotheses_tree import LightTree
 from pix.hypotheses_tree import HypothesesTree
 from pix.utils.others import *
+from pix.methods.coefficients_optimizer import optimize_coefficients
 import sympy as sp
 import scipy
 
@@ -106,9 +107,12 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, STR
     train_loss_func, mse_list_train = tree.calculator.get_loss_func(deci_list_len=len(deci_list))
     valid_loss_func, mse_list_valid = tree.calculator.get_loss_func(mode="valid", deci_list_len=len(deci_list))
     
+    opt_method = cfg.get("coefficient_optimizer", "scipy")
+
     is_STR_coefs = np.array(["_STR_coef" in p for p in tree.calculator.sp_unknown_quantities.keys()]) #boolean array
     if len(SR_list) == 0 or STR_iter_max <= 0: #ordinary solver
-        sol = optimize_with_timeout(train_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best=None, verbose=True)
+        sol = optimize_coefficients(opt_method, train_loss_func, init_params, tree.calculator.get_constr_dict_list(), 
+                                   cfg=cfg, calculator=tree.calculator, deci_list=deci_list, verbose=True)
     else: # STRidge solver
         params_name = list(tree.calculator.sp_unknown_quantities.keys())
         #--- hyper-params---
@@ -126,7 +130,9 @@ def single_test(cfg, root_dir, deci_list, deleted_coef=[], init_params=None, STR
         if verbose:
             print(f"Start stridge_loop with {STR_iter_max=}", flush=1)
         
-        sol = optimize_with_timeout(STR_loss_func, init_params, tree.calculator.get_constr_dict_list(), prev_sol_best={"fun":1e-3, "nit":5}, verbose=True)
+        sol = optimize_coefficients(opt_method, STR_loss_func, init_params, tree.calculator.get_constr_dict_list(), 
+                                   cfg=cfg, calculator=tree.calculator, deci_list=deci_list, 
+                                   prev_sol_best={"fun":1e-3, "nit":5}, verbose=True)
         is_small_p = (pre_process(np.abs(sol['x'])) < tol_w) * is_STR_coefs
 
         if verbose:
