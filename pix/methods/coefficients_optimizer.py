@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import scipy
+import sympy as sp
 import time as time_module
 
 class EarlyStopException(Exception):
@@ -69,18 +70,74 @@ def optimize_with_timeout(mse_func, init_params, constr_dict_list, prev_sol_best
     sol['time'] = time_module.time() - start_time
     return sol
 
+def optimize_with_lstsq(calculator, mse_func, init_params):
+    """Linear least squares for coefficient fitting when equation is linear in coeffs."""
+    start_time = time_module.time()
+    try:
+        eq = calculator.sp_equation[0] if len(calculator.sp_equation) > 0 else None
+        if eq is None or (hasattr(eq, 'shape') and len(getattr(eq, 'shape', ())) > 0):
+            raise ValueError("Equation is array/matrix or empty, cannot use lstsq")
+        
+        coeff_symbols = list(calculator.sp_unknown_quantities.values())
+        q_exprs = []
+        for c in coeff_symbols:
+            q_expr = sp.expand(eq).coeff(c)
+            if q_expr is None:
+                q_expr = sp.Integer(0)
+            q_exprs.append(q_expr)
+        q0_expr = sp.expand(eq).subs({c: 0 for c in coeff_symbols})
+        
+        q0_func = sp.lambdify([calculator.args_symbols], q0_expr, 'numpy')
+        q_funcs = [sp.lambdify([calculator.args_symbols], q_expr, 'numpy') for q_expr in q_exprs]
+        
+        with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+            q0_val = np.asarray(q0_func(calculator.args_data), dtype=np.float64)
+            q_vals = [np.asarray(q_fn(calculator.args_data), dtype=np.float64) for q_fn in q_funcs]
+        
+        A = np.column_stack([q.ravel() for q in q_vals]) if len(q_vals) > 0 else np.zeros((q0_val.size, 0))
+        b = -q0_val.ravel()
+        
+        if A.shape[1] > 0:
+            fit_coeffs_arr, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
+            fit_coeffs = np.asarray(fit_coeffs_arr, dtype=np.float64)
+        else:
+            fit_coeffs = np.array([], dtype=np.float64)
+        
+        fit_loss = float(mse_func(fit_coeffs))
+        elapsed = time_module.time() - start_time
+        return {
+            "x": fit_coeffs,
+            "fun": fit_loss,
+            "nit": 1,
+            "status": "Success",
+            "time": elapsed,
+            "method": "lstsq",
+        }
+    except Exception as e:
+        elapsed = time_module.time() - start_time
+        return {
+            "x": init_params,
+            "fun": float(mse_func(init_params)),
+            "nit": 0,
+            "status": "LSTSQ_Failed",
+            "time": elapsed,
+            "method": "lstsq",
+            "error": str(e),
+        }
+
+
 def optimize_coefficients(method, mse_func, init_params, constr_dict_list, 
                           cfg=None, calculator=None, deci_list=None, **kwargs):
     """
     Unified entry point for coefficient optimization.
     
     Args:
-        method: 'scipy' or 'pinn'
+        method: 'scipy', 'pinn', or 'lstsq'
         mse_func: Objective function for scipy
         init_params: Initial guess (numpy array)
         constr_dict_list: Constraints for SLSQP
         cfg: Full Hydra config
-        calculator: PIX Calculator instance (required for PINN)
+        calculator: PIX Calculator instance (required for PINN and LSTSQ)
         deci_list: List of active decision node IDs
     """
     if method == "scipy":
@@ -89,6 +146,9 @@ def optimize_coefficients(method, mse_func, init_params, constr_dict_list,
     elif method == "pinn":
         from pix.utils.eqgpt.PINN_optimization import optimize_with_pinn_impl
         return optimize_with_pinn_impl(calculator, cfg, deci_list, init_params, mse_func=mse_func)
+    
+    elif method == "lstsq":
+        return optimize_with_lstsq(calculator, mse_func, init_params)
 
     else:
         raise ValueError(f"Unknown optimization method: {method}")
