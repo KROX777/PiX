@@ -13,15 +13,58 @@ import numpy as np
 from pix.utils.finite_diff import FiniteDiffVand
 
 
+def _spectral_diff(arr, grid, axis=0):
+    """
+    Compute derivative using spectral (Fourier) differentiation.
+    Best for periodic data; has boundary artifacts for non-periodic.
+    """
+    n = arr.shape[axis]
+    L = grid[-1] - grid[0] + (grid[1] - grid[0])  # approximate period
+    # wave numbers
+    k = 2 * np.pi * np.fft.fftfreq(n, d=(grid[1] - grid[0]))
+    
+    # move axis to front
+    trans_idx = list(range(arr.ndim))
+    trans_idx[axis] = 0
+    trans_idx[0] = axis
+    u = arr.transpose(*trans_idx)
+    shape = u.shape
+    u = u.reshape(n, -1)
+    
+    ux = np.zeros_like(u)
+    for i in range(u.shape[1]):
+        u_hat = np.fft.fft(u[:, i])
+        du_hat = 1j * k * u_hat
+        ux[:, i] = np.fft.ifft(du_hat).real
+    
+    ux = ux.reshape(shape)
+    ux = ux.transpose(*trans_idx)
+    return ux
+
+
+def _numpy_gradient(arr, dx, axis=0):
+    """
+    Compute derivative using np.gradient (2nd-order central difference).
+    Uses scalar spacing for robustness (avoids grid/arr shape mismatch after clipping).
+    """
+    # np.gradient with scalar spacing works regardless of boundary clipping mismatches
+    grads = np.gradient(arr, dx, axis=axis)
+    return grads
+
+
 def np_grad(
     arr_list: Union[np.ndarray, List[np.ndarray]],
     grids: Tuple[np.ndarray, ...],
-    is_time_grad: bool = False
+    is_time_grad: bool = False,
+    method: str = "polynomial"
 ) -> List[np.ndarray]:
     """ 
     Compute spatial or temporal gradient of NumPy arrays.
     
-    Uses finite difference methods to compute derivatives along coordinate axes.
+    Supports multiple differentiation methods:
+    - 'polynomial': Polynomial interpolation via Vandermonde (PiX default, smooth)
+    - 'numpy':      Standard np.gradient (central finite difference, faithful)
+    - 'spectral':   Fourier spectral differentiation (accurate for smooth/periodic data)
     
     Args:
         arr_list: Single or list of N-dimensional arrays to differentiate.
@@ -30,6 +73,7 @@ def np_grad(
                Example: (x_grid, y_grid, t_grid) with shapes (nx,), (ny,), (nt,)
         is_time_grad: If True, compute temporal derivatives only.
                       If False, compute spatial derivatives only.
+        method: Differentiation method. One of 'polynomial', 'numpy', 'spectral'.
     
     Returns:
         List of gradient arrays. For each input array and each gradient axis,
@@ -38,8 +82,8 @@ def np_grad(
     Examples:
         >>> u = np.random.rand(10, 10, 5)  # 2D field at 5 time steps
         >>> grids = (np.linspace(0,1,10), np.linspace(0,1,10), np.linspace(0,1,5))
-        >>> du_dx, du_dy = np_grad(u, grids, is_time_grad=False)  # spatial gradients
-        >>> du_dt = np_grad(u, grids, is_time_grad=True)[0]  # temporal gradient
+        >>> du_dx, du_dy = np_grad(u, grids, is_time_grad=False, method='numpy')
+        >>> du_dt = np_grad(u, grids, is_time_grad=True, method='numpy')[0]
     """
     if not isinstance(arr_list, list):
         arr_list = [arr_list]
@@ -52,16 +96,24 @@ def np_grad(
         dx = grid[1] - grid[0]
         
         for arr in arr_list:
-            ret.append(FiniteDiffVand(arr, dx=dx, d=1, axis=axis_idx))
+            if method == "polynomial":
+                ret.append(FiniteDiffVand(arr, dx=dx, d=1, axis=axis_idx))
+            elif method == "numpy":
+                ret.append(_numpy_gradient(arr, dx, axis=axis_idx))
+            elif method == "spectral":
+                ret.append(_spectral_diff(arr, grid, axis=axis_idx))
+            else:
+                raise ValueError(f"Unknown differentiation method: {method}. "
+                                 f"Supported: 'polynomial', 'numpy', 'spectral'")
     return ret
 
-def np_grad_all(arr_list, grids):
+def np_grad_all(arr_list, grids, method="polynomial"):
     """ 
     np_grad() wrapper, get [grad_, grad_grad_, dt_] in one call.
     """
-    dt_ = np_grad(arr_list, grids, is_time_grad=True)
-    grad_ = np_grad(arr_list, grids)
-    grad_grad_  = np_grad(grad_, grids)
+    dt_ = np_grad(arr_list, grids, is_time_grad=True, method=method)
+    grad_ = np_grad(arr_list, grids, is_time_grad=False, method=method)
+    grad_grad_  = np_grad(grad_, grids, is_time_grad=False, method=method)
     return [grad_, grad_grad_, dt_]
 
 

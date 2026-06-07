@@ -184,15 +184,17 @@ class DataLoader:
                 print(f"Warning: Variable '{var}' not found in data, using default value (ones)")
                 field_data[var] = np.ones_like(self.u[..., 0])
 
+        diff_method = getattr(self.config, 'diff_method', 'polynomial')
+        
         args_data = []
         for var, data in field_data.items():
             args_data.append(data)  # 原始变量
             if len(self.grids) > 1:
-                grad_ = np_grad([data], self.grids, is_time_grad=False)  # 空间一阶导数
-                grad_grad_ = np_grad(grad_, self.grids, is_time_grad=False)  # 空间二阶导数
-                grad_3_ = np_grad(grad_grad_, self.grids, is_time_grad=False)  # 空间三阶导数
-                dt_ = np_grad([data], self.grids, is_time_grad=True)  # 时间一阶导数
-                dtt_ = np_grad(dt_, self.grids, is_time_grad=True)    # 时间二阶导数
+                grad_ = np_grad([data], self.grids, is_time_grad=False, method=diff_method)  # 空间一阶导数
+                grad_grad_ = np_grad(grad_, self.grids, is_time_grad=False, method=diff_method)  # 空间二阶导数
+                grad_3_ = np_grad(grad_grad_, self.grids, is_time_grad=False, method=diff_method)  # 空间三阶导数
+                dt_ = np_grad([data], self.grids, is_time_grad=True, method=diff_method)  # 时间一阶导数
+                dtt_ = np_grad(dt_, self.grids, is_time_grad=True, method=diff_method)    # 时间二阶导数
                 
                 args_data.extend(grad_)      
                 args_data.extend(grad_grad_) 
