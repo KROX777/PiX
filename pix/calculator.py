@@ -76,11 +76,12 @@ class Calculator:
         self.data_loader = DataLoader(config)
         self.root_dir = root_dir
         
-        # Load and cache data
-        self.data_loader.get_raw_data(
-            os.path.join(root_dir, config.dataset_path),
-            verbose=config.verbose
-        )
+        # Load and cache data (skip if dataset_path is empty for direct injection)
+        if getattr(config, 'dataset_path', ''):
+            self.data_loader.get_raw_data(
+                os.path.join(root_dir, config.dataset_path),
+                verbose=config.verbose
+            )
         self.spatial_vars = self.data_loader.spatial_vars
         self.field_vars = self.data_loader.field_vars
         self.temporal_vars = self.data_loader.temporal_vars
@@ -477,7 +478,7 @@ class Calculator:
                     if np.any(~np.isfinite(arr)):
                         sign = np.sign(arr)
                         arr = np.where(np.isinf(arr), sign * 1e10, arr)
-                        arr = np.where(np.isnan(arr), 0.0, arr)
+                        arr = np.where(np.isnan(arr), 1e10, arr)
                     return arr
             
             return stable_wrapper

@@ -48,6 +48,31 @@ class DataLoader:
         self.u: Optional[np.ndarray] = None
         self.grids: Optional[Tuple[np.ndarray, ...]] = None
 
+    def set_data(self, u, grids, spatial_vars=None, temporal_vars=None, field_vars=None, verbose=False):
+        """
+        Directly set data arrays without loading from disk.
+        
+        Args:
+            u: ndarray of field data, shape (...spatial..., num_fields)
+            grids: tuple of 1D coordinate arrays for each dimension
+            spatial_vars: list of spatial variable names
+            temporal_vars: list of temporal variable names
+            field_vars: list of field variable names
+            verbose: print shapes
+        """
+        self.u = u
+        self.grids = grids
+        if spatial_vars is not None:
+            self.spatial_vars = spatial_vars
+        if temporal_vars is not None:
+            self.temporal_vars = temporal_vars
+        if field_vars is not None:
+            self.field_vars = field_vars
+        if verbose:
+            print(f"Direct set data shape: {self.u.shape}")
+            print(f"Grid shapes: {[g.shape for g in self.grids]}")
+            print(f"Vars: spatial={self.spatial_vars}, temporal={self.temporal_vars}, fields={self.field_vars}")
+
     def from_csv(self, csv_path: str, verbose: bool = False) -> None:
         """
         Load data from CSV file and create structured grid.
