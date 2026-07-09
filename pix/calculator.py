@@ -395,10 +395,60 @@ class Calculator:
                 constr_dict_list.append(c)
         return constr_dict_list
 
+    def _sync_from_data_loader(self):
+        """Re-sync symbolic state from data_loader after direct set_data()."""
+        self.spatial_vars = list(self.data_loader.spatial_vars)
+        self.field_vars = list(self.data_loader.field_vars)
+        self.temporal_vars = list(self.data_loader.temporal_vars)
+
+        self.sp_spatial_vars = {var: sp.symbols(var) for var in self.spatial_vars}
+        self.space_axis = [self.sp_spatial_vars[var] for var in self.spatial_vars]
+        self.X = sp.Array(self.space_axis)
+        self.X_dim = len(self.space_axis)
+
+        self.sp_temporal_vars = {var: sp.symbols(var) for var in self.temporal_vars}
+        self.has_time = 't' in self.temporal_vars
+        if self.has_time:
+            self.t = self.sp_temporal_vars['t']
+        elif hasattr(self, 't'):
+            delattr(self, 't')
+
+        self.sp_field_funcs = {}
+        for var in self.field_vars:
+            f = sp.Function(var)
+            if self.has_time:
+                self.sp_field_funcs[var] = f(*self.space_axis, self.t)
+            else:
+                self.sp_field_funcs[var] = f(*self.space_axis)
+
+        self.local_dict = {}
+        self._build_local_dict()
+        self.upd_local_dict()
+
+        self.args_symbols = []
+        self.args_data = []
+        self.sp_equation = []
+
+        self.dx = self.dy = self.dz = self.dt = None
+        grids = getattr(self.data_loader, 'grids', None)
+        if grids is not None:
+            for i, var in enumerate(self.spatial_vars):
+                grid = grids[i]
+                step = round(float(grid[1] - grid[0]), 6) if len(grid) > 1 else None
+                if var == 'x': self.dx = step
+                elif var == 'y': self.dy = step
+                elif var == 'z': self.dz = step
+            if self.has_time and len(grids) > len(self.spatial_vars):
+                t_grid = grids[-1]
+                self.dt = round(float(t_grid[1] - t_grid[0]), 6) if len(t_grid) > 1 else None
+
     def load_args(self):
         """
         Get the arguments for the residual functions.
         """
+        # Sync internal state from data_loader (in case set_data was used)
+        self._sync_from_data_loader()
+
         # Map remaining scalar field variables
         for var in self.field_vars:
             self.args_symbols.append(self.sp_field_funcs[var])
