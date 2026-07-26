@@ -218,13 +218,20 @@ class DataLoader:
                 grad_ = np_grad([data], self.grids, is_time_grad=False, method=diff_method)  # 空间一阶导数
                 grad_grad_ = np_grad(grad_, self.grids, is_time_grad=False, method=diff_method)  # 空间二阶导数
                 grad_3_ = np_grad(grad_grad_, self.grids, is_time_grad=False, method=diff_method)  # 空间三阶导数
+                grad_4_ = np_grad(grad_3_, self.grids, is_time_grad=False, method=diff_method)  # 空间四阶导数
                 dt_ = np_grad([data], self.grids, is_time_grad=True, method=diff_method)  # 时间一阶导数
                 dtt_ = np_grad(dt_, self.grids, is_time_grad=True, method=diff_method)    # 时间二阶导数
                 
                 args_data.extend(grad_)      
                 args_data.extend(grad_grad_) 
                 args_data.extend(grad_3_) 
+                args_data.extend(grad_4_)
                 args_data.extend(dt_)                
                 args_data.extend(dtt_)
+
+        # Coordinate-dependent source terms need coordinate arrays alongside
+        # field values and derivatives in the lambdified argument vector.
+        if self.grids is not None:
+            args_data.extend(np.meshgrid(*self.grids, indexing='ij'))
         
         return args_data

@@ -468,12 +468,26 @@ class Calculator:
                     for k in range(len(self.space_axis)):
                         self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.X[i], self.X[j], self.X[k]))
 
+            # Fourth-order spatial derivatives
+            for i in range(len(self.space_axis)):
+                for j in range(len(self.space_axis)):
+                    for k in range(len(self.space_axis)):
+                        for l in range(len(self.space_axis)):
+                            self.args_symbols.append(sp.Derivative(
+                                self.sp_field_funcs[var], self.X[i], self.X[j],
+                                self.X[k], self.X[l]
+                            ))
+
             # Time derivative if time is included
             if self.has_time:
                 # First-order time derivative
                 self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.t))
                 # Second-order time derivative
                 self.args_symbols.append(sp.Derivative(self.sp_field_funcs[var], self.t, self.t))
+
+        self.args_symbols.extend(self.space_axis)
+        if self.has_time:
+            self.args_symbols.append(self.t)
         
         self.args_data = self.data_loader.get_args_data(verbose=self.config.verbose)
         def pre_process(arr):
