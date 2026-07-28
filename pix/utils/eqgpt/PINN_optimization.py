@@ -1,549 +1,333 @@
-"""
-PINN-based coefficient optimization for PiX.
+"""DeepXDE/Paddle coefficient optimization for PiX symbolic equations."""
 
-This module provides Physics-Informed Neural Network (PINN) optimization
-that directly uses the symbolic PDEs from Calculator.
-"""
-import torch
-import torch.nn as nn
-import numpy as np
+import contextlib
+import io
+import os
 import time
+
+os.environ["DDE_BACKEND"] = "paddle"
+
+import deepxde as dde
+import numpy as np
+import paddle
+import paddle_custom_device  # noqa: F401
 import sympy as sp
-from torch.autograd import Variable
-from tqdm import tqdm
-import warnings
-warnings.filterwarnings('ignore')
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-class Sin(nn.Module):
-    def __init__(self):
-        super(Sin, self).__init__()
-    def forward(self, x):
-        return torch.sin(x)
+DEFAULT_CONFIG = {
+    "iterations": 2000,
+    "learning_rate": 3e-3,
+    "pde_loss_weight": 1.0,
+    "data_loss_weight": 10.0,
+    "max_points": 768,
+    "hidden_layers": 3,
+    "neurons": 32,
+    "seed": 42,
+    "device": "npu:0",
+    "display_every": 0,
+}
 
 
-class Rational(torch.nn.Module):
-    def __init__(self, Data_Type=torch.float32, Device=torch.device('cpu')):
-        super(Rational, self).__init__()
-        self.a = torch.nn.parameter.Parameter(
-            torch.tensor((1.1915, 1.5957, 0.5, .0218),
-                        dtype=Data_Type, device=Device))
-        self.a.requires_grad_(True)
-        self.b = torch.nn.parameter.Parameter(
-            torch.tensor((2.3830, 0.0, 1.0),
-                        dtype=Data_Type, device=Device))
-        self.b.requires_grad_(True)
-
-    def forward(self, X: torch.tensor):
-        a = self.a
-        b = self.b
-        N_X = a[0] + X*(a[1] + X*(a[2] + a[3]*X))
-        D_X = b[0] + X*(b[1] + b[2]*X)
-        return N_X/D_X
-
-
-class NN(torch.nn.Module):
-    def __init__(self,
-                 Num_Hidden_Layers: int = 3,
-                 Neurons_Per_Layer: int = 20,
-                 Input_Dim: int = 1,
-                 Output_Dim: int = 1,
-                 Data_Type: torch.dtype = torch.float32,
-                 Device: torch.device = torch.device('cpu'),
-                 Activation_Function: str = "Tanh",
-                 Batch_Norm: bool = False):
-        super(NN, self).__init__()
-        self.Input_Dim: int = Input_Dim
-        self.Output_Dim: int = Output_Dim
-        self.Num_Hidden_Layers: int = Num_Hidden_Layers
-        self.Batch_Norm: bool = Batch_Norm
-        self.Layers = torch.nn.ModuleList()
-        if Batch_Norm == True:
-            self.Norm_Layer = torch.nn.BatchNorm1d(num_features=Input_Dim, dtype=Data_Type, device=Device)
-        self.Layers.append(torch.nn.Linear(in_features=Input_Dim, out_features=Neurons_Per_Layer, bias=True).to(dtype=Data_Type, device=Device))
-        for i in range(1, Num_Hidden_Layers):
-            self.Layers.append(torch.nn.Linear(in_features=Neurons_Per_Layer, out_features=Neurons_Per_Layer, bias=True).to(dtype=Data_Type, device=Device))
-        self.Layers.append(torch.nn.Linear(in_features=Neurons_Per_Layer, out_features=Output_Dim, bias=True).to(dtype=Data_Type, device=Device))
-        
-        if Activation_Function == "Tanh" or Activation_Function == "Rational":
-            Gain = 5./3. if Activation_Function == "Tanh" else 1.41
-            for i in range(self.Num_Hidden_Layers + 1):
-                torch.nn.init.xavier_normal_(self.Layers[i].weight, gain=Gain)
-                torch.nn.init.zeros_(self.Layers[i].bias)
-        elif Activation_Function == "Sin":
-            import math
-            a = 3./math.sqrt(Neurons_Per_Layer)
-            for i in range(0, self.Num_Hidden_Layers + 1):
-                torch.nn.init.uniform_(self.Layers[i].weight, -a, a)
-                torch.nn.init.zeros_(self.Layers[i].bias)
-        
-        self.Activation_Functions = torch.nn.ModuleList()
-        if Activation_Function == "Tanh":
-            for i in range(Num_Hidden_Layers): 
-                self.Activation_Functions.append(torch.nn.Tanh())
-        elif Activation_Function == "Sin":
-            for i in range(Num_Hidden_Layers): 
-                self.Activation_Functions.append(Sin())
-        elif Activation_Function == "Rational":
-            for i in range(Num_Hidden_Layers): 
-                self.Activation_Functions.append(Rational(Data_Type=Data_Type, Device=Device))
-
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        if self.Batch_Norm == True: 
-            X = self.Norm_Layer(X)
-        for i in range(0, self.Num_Hidden_Layers): 
-            X = self.Activation_Functions[i](self.Layers[i](X))
-        return self.Layers[self.Num_Hidden_Layers](X)
+def _read_config(cfg):
+    raw = {} if cfg is None else cfg.get("pinn_config", {})
+    result = dict(DEFAULT_CONFIG)
+    for key in result:
+        if key in raw:
+            result[key] = raw[key]
+    if "epochs" in raw and "iterations" not in raw:
+        result["iterations"] = raw["epochs"]
+    result["iterations"] = int(result["iterations"])
+    result["max_points"] = int(result["max_points"])
+    result["hidden_layers"] = int(result["hidden_layers"])
+    result["neurons"] = int(result["neurons"])
+    result["seed"] = int(result["seed"])
+    result["display_every"] = int(result["display_every"])
+    if result["iterations"] <= 0 or result["max_points"] <= 0:
+        raise ValueError("PINN iterations and max_points must be positive")
+    return result
 
 
-class MultiFieldNet(nn.Module):
-    """Neural networks for multiple field variables."""
-    def __init__(self, field_names, input_dim, hidden_layers=5, neurons=40):
-        super(MultiFieldNet, self).__init__()
-        self.field_names = field_names
-        self.nets = nn.ModuleDict()
-        for field in field_names:
-            self.nets[field] = NN(
-                Num_Hidden_Layers=hidden_layers,
-                Neurons_Per_Layer=neurons,
-                Input_Dim=input_dim,
-                Output_Dim=1,
-                Data_Type=torch.float32,
-                Device=device,
-                Activation_Function='Tanh'
-            )
-    
-    def forward(self, coords, field_name=None):
-        if field_name is not None:
-            return self.nets[field_name](coords)
-        return {f: self.nets[f](coords) for f in self.field_names}
+def _import_backend(device):
+    if dde.backend.backend_name != "paddle":
+        raise RuntimeError(
+            f"DeepXDE backend must be paddle, got {dde.backend.backend_name!r}"
+        )
+    if str(device).startswith("npu"):
+        if "npu" not in paddle.device.get_all_custom_device_type():
+            raise RuntimeError("Paddle NPU custom device is not available")
+    paddle.set_device(device)
+    return dde, paddle
 
 
-class PDEResidualComputer:
-    """
-    Computes PDE residuals from symbolic equations using neural networks.
-    """
-    def __init__(self, calculator, field_nets, coords, var_names, spatial_vars, temporal_vars, coeff_names):
+def _normalize_coordinates(grids):
+    centers = []
+    half_ranges = []
+    normalized_grids = []
+    for grid in grids:
+        grid = np.asarray(grid, dtype=np.float64)
+        if grid.ndim != 1 or grid.size < 2:
+            raise ValueError(f"PINN requires one-dimensional nontrivial grids, got {grid.shape}")
+        center = float((grid[0] + grid[-1]) / 2.0)
+        half_range = float((grid[-1] - grid[0]) / 2.0)
+        if not np.isfinite(half_range) or half_range <= 0:
+            raise ValueError(f"Invalid coordinate range: [{grid[0]}, {grid[-1]}]")
+        centers.append(center)
+        half_ranges.append(half_range)
+        normalized_grids.append((grid - center) / half_range)
+    mesh = np.meshgrid(*normalized_grids, indexing="ij")
+    coordinates = np.column_stack([axis.reshape(-1) for axis in mesh]).astype(np.float32)
+    return coordinates, np.asarray(centers), np.asarray(half_ranges)
+
+
+def _normalize_fields(field_data, max_points, seed):
+    field_data = np.asarray(field_data, dtype=np.float64)
+    if field_data.ndim < 2:
+        raise ValueError(f"PINN field data must include grid and field axes, got {field_data.shape}")
+    n_fields = field_data.shape[-1]
+    flattened = field_data.reshape(-1, n_fields)
+    means = np.mean(flattened, axis=0)
+    scales = np.std(flattened, axis=0)
+    if np.any(~np.isfinite(means)) or np.any(~np.isfinite(scales)):
+        raise ValueError("PINN field data contains non-finite statistics")
+    if np.any(scales < 1e-8):
+        raise ValueError(f"PINN field scale is degenerate: {scales}")
+    normalized = ((flattened - means) / scales).astype(np.float32)
+    rng = np.random.default_rng(seed)
+    count = min(max_points, len(flattened))
+    indices = rng.choice(len(flattened), size=count, replace=False)
+    return normalized, means, scales, indices
+
+
+def _residual_scales(calculator, init_params):
+    residual_functions = calculator.gen_np_func(calculator.sp_equation)
+    if len(residual_functions) != len(calculator.sp_equation):
+        raise ValueError("PINN currently requires scalar PiX equations")
+    scales = []
+    for function in residual_functions:
+        values = np.asarray(function(calculator.args_data, init_params), dtype=np.float64)
+        scale = float(np.sqrt(np.mean(values**2)))
+        scales.append(scale if np.isfinite(scale) and scale > 1e-5 else 1.0)
+    return scales
+
+
+class _PaddleExpressionEvaluator:
+    def __init__(self, dde, paddle, calculator, coordinates, fields, coefficients,
+                 centers, half_ranges):
+        self.dde = dde
+        self.paddle = paddle
         self.calculator = calculator
-        self.field_nets = field_nets
-        self.coords = coords
-        self.var_names = var_names
-        self.spatial_vars = spatial_vars
-        self.temporal_vars = temporal_vars
-        self.n_points = coords.shape[0]
-        self.coeff_names = coeff_names  # List of coefficient symbol names
-        
-        # Map variable names to indices
-        self.var_idx = {v: i for i, v in enumerate(var_names)}
-        
-        # Cache for derivatives
-        self.derivative_cache = {}
-        
-    def get_field_value(self, field_name):
-        """Get neural network prediction for a field."""
-        return self.field_nets.nets[field_name](self.coords)
-    
-    def compute_derivative(self, field_name, var_name, order=1):
-        """Compute derivative of field w.r.t. variable."""
-        cache_key = (field_name, var_name, order)
-        if cache_key in self.derivative_cache:
-            return self.derivative_cache[cache_key]
-        
-        field_net = self.field_nets.nets[field_name]
-        var_idx = self.var_idx[var_name]
-        
-        # First derivative
-        output = field_net(self.coords)
-        grad = torch.autograd.grad(
-            outputs=output.sum(),
-            inputs=self.coords,
-            create_graph=True,
-            retain_graph=True
-        )[0]
-        result = grad[:, var_idx:var_idx+1]
-        
-        # Higher order derivatives
-        for _ in range(1, order):
-            grad = torch.autograd.grad(
-                outputs=result.sum(),
-                inputs=self.coords,
-                create_graph=True,
-                retain_graph=True
-            )[0]
-            result = grad[:, var_idx:var_idx+1]
-        
-        self.derivative_cache[cache_key] = result
-        return result
-    
-    def evaluate_expr(self, expr, coeff_tensor=None):
-        """
-        Evaluate a sympy expression using neural network values.
-        
-        Args:
-            expr: SymPy expression
-            coeff_tensor: Torch tensor of coefficient values (shape: [n_coeffs])
-        
-        Returns:
-            Torch tensor of evaluated expression
-        """
-        # Handle different expression types
-        if expr.is_Number:
-            return torch.full((self.n_points, 1), float(expr), device=device)
-        
-        # Handle symbols and function applications
-        if expr.is_Symbol:
-            # Check if it's a coefficient
-            if self.coeff_names and str(expr) in self.coeff_names:
-                idx = self.coeff_names.index(str(expr))
-                if coeff_tensor is not None:
-                    # Return as tensor with gradient
-                    val = coeff_tensor[idx]
-                    return val.view(1, 1).expand(self.n_points, 1)
-                else:
-                    return torch.zeros(self.n_points, 1, device=device)
-            # Check if it's a coordinate variable
-            if str(expr) in self.var_idx:
-                idx = self.var_idx[str(expr)]
-                return self.coords[:, idx:idx+1]
-            # Unknown symbol - return zero
-            return torch.zeros(self.n_points, 1, device=device)
-        
-        # Handle function applications like u(x,y,t), rho(x,y,t)
-        if hasattr(expr, 'func') and hasattr(expr, 'args') and len(expr.args) > 0:
-            func_name = str(expr.func)
-            # Check if it's a field variable
-            if func_name in self.field_nets.nets:
-                return self.get_field_value(func_name)
-        
-        if expr.__class__.__name__ == 'Derivative':
-            # Extract field and differentiation variables
-            field_func = expr.args[0]
-            diff_specs = expr.args[1:]  # Each is a Tuple: (var, order) or just var
-            
-            # Get field name from function
-            if hasattr(field_func, 'func'):
-                field_name = str(field_func.func)
-            else:
-                field_name = str(field_func)
-            
-            # Parse differentiation specifications
-            deriv_specs = []
-            for spec in diff_specs:
-                if hasattr(spec, '__iter__') and len(spec) >= 1:
-                    var_name = str(spec[0])
-                    order = int(spec[1]) if len(spec) > 1 else 1
-                else:
-                    var_name = str(spec)
-                    order = 1
-                deriv_specs.append((var_name, order))
-            
-            # Compute derivative step by step
-            result = self.get_field_value(field_name)
-            for var_name, order in deriv_specs:
-                var_idx = self.var_idx.get(var_name)
-                if var_idx is None:
-                    raise ValueError(f"Unknown variable '{var_name}' in derivative")
-                
-                # Apply derivative order times
-                for _ in range(order):
-                    grad = torch.autograd.grad(
-                        outputs=result.sum(),
-                        inputs=self.coords,
-                        create_graph=True,
-                        retain_graph=True
-                    )[0]
-                    result = grad[:, var_idx:var_idx+1]
-                    # Clip to prevent explosion
-                    result = torch.clamp(result, -1e6, 1e6)
-            
+        self.coordinates = coordinates
+        self.fields = fields
+        self.coefficients = coefficients
+        self.centers = centers
+        self.half_ranges = half_ranges
+        coordinate_names = calculator.spatial_vars + calculator.temporal_vars
+        self.coordinate_indices = {name: i for i, name in enumerate(coordinate_names)}
+        self.coordinate_symbols = {
+            str(symbol): i for i, symbol in enumerate(
+                list(calculator.space_axis)
+                + ([calculator.t] if calculator.has_time else [])
+            )
+        }
+        self.field_functions = {
+            function.func: name for name, function in calculator.sp_field_funcs.items()
+        }
+
+    def _differentiate(self, value, variable, count):
+        variable_name = str(variable)
+        if variable_name not in self.coordinate_indices:
+            raise ValueError(f"Unknown PINN derivative coordinate: {variable_name}")
+        index = self.coordinate_indices[variable_name]
+        for _ in range(int(count)):
+            value = self.dde.grad.jacobian(
+                value, self.coordinates, i=0, j=index
+            ) / float(self.half_ranges[index])
+        return value
+
+    def evaluate(self, expression):
+        if expression.is_Number:
+            return float(expression)
+        if expression.is_Symbol:
+            name = str(expression)
+            if name in self.coefficients:
+                return self.coefficients[name]
+            if name in self.coordinate_symbols:
+                index = self.coordinate_symbols[name]
+                return (
+                    float(self.centers[index])
+                    + float(self.half_ranges[index]) * self.coordinates[:, index:index + 1]
+                )
+            raise ValueError(f"Unsupported PINN symbol: {name}")
+        if isinstance(expression, sp.Derivative):
+            value = self.evaluate(expression.expr)
+            for variable, count in expression.variable_count:
+                value = self._differentiate(value, variable, count)
+            return value
+        if expression.func in self.field_functions:
+            return self.fields[self.field_functions[expression.func]]
+        if expression.is_Add:
+            values = [self.evaluate(argument) for argument in expression.args]
+            return sum(values[1:], values[0])
+        if expression.is_Mul:
+            values = [self.evaluate(argument) for argument in expression.args]
+            result = values[0]
+            for value in values[1:]:
+                result = result * value
             return result
-        
-        if expr.__class__.__name__ == 'Add':
-            result = torch.zeros(self.n_points, 1, device=device)
-            for arg in expr.args:
-                term = self.evaluate_expr(arg, coeff_tensor)
-                # Check for nan/inf
-                if torch.isnan(term).any() or torch.isinf(term).any():
-                    continue
-                result = result + torch.clamp(term, -1e6, 1e6)
-            return result
-        
-        if expr.__class__.__name__ == 'Mul':
-            result = torch.ones(self.n_points, 1, device=device)
-            for arg in expr.args:
-                factor = self.evaluate_expr(arg, coeff_tensor)
-                if torch.isnan(factor).any() or torch.isinf(factor).any():
-                    continue
-                result = result * torch.clamp(factor, -1e6, 1e6)
-            return result
-        
-        if expr.__class__.__name__ == 'Pow':
-            base = self.evaluate_expr(expr.args[0], coeff_tensor)
-            exp = float(expr.args[1])
-            # Clamp base to prevent numerical issues
-            # For fractional exponents (like sqrt), ensure base >= 0
-            if exp < 1.0 and exp > 0:
-                base = torch.clamp(base, min=1e-8)
-            elif exp < 0:
-                base = torch.clamp(base, min=1e-8, max=1e8)
-            else:
-                base = torch.clamp(base, -1e8, 1e8)
-            return torch.pow(base, exp)
-        
-        if expr.__class__.__name__ == 'sqrt':
-            arg = self.evaluate_expr(expr.args[0], coeff_tensor)
-            # Ensure non-negative inside sqrt
-            arg = torch.clamp(arg, min=1e-8)
-            return torch.sqrt(arg)
-        
-        # Handle Array/ImmutableDenseNDimArray
-        if expr.__class__.__name__ in ('Array', 'ImmutableDenseNDimArray'):
-            # Flatten array and compute each element
-            elements = []
-            # Use flat() or iterate through shape
-            if hasattr(expr, 'flatten'):
-                flat_exprs = expr.flatten()
-            else:
-                # Manually iterate
-                flat_exprs = [expr[i] for i in range(len(expr))]
-            for e in flat_exprs:
-                elements.append(self.evaluate_expr(e, coeff_tensor))
-            # Stack and compute mean of squares (sum of squared residuals)
-            stacked = torch.stack(elements, dim=1)
-            return (stacked ** 2).mean(dim=1, keepdim=True)
-        
-        # Handle Matrix
-        if expr.__class__.__name__ == 'Matrix':
-            elements = []
-            for i in range(expr.shape[0]):
-                for j in range(expr.shape[1]):
-                    elements.append(self.evaluate_expr(expr[i, j], coeff_tensor))
-            return torch.stack(elements, dim=1).mean(dim=1, keepdim=True)
-        
-        # Handle common functions
-        if expr.__class__.__name__ == 'sin':
-            return torch.sin(self.evaluate_expr(expr.args[0], coeff_tensor))
-        if expr.__class__.__name__ == 'cos':
-            return torch.cos(self.evaluate_expr(expr.args[0], coeff_tensor))
-        if expr.__class__.__name__ == 'exp':
-            return torch.exp(self.evaluate_expr(expr.args[0], coeff_tensor))
-        if expr.__class__.__name__ == 'log':
-            return torch.log(self.evaluate_expr(expr.args[0], coeff_tensor))
-        if expr.__class__.__name__ == 'Abs':
-            return torch.abs(self.evaluate_expr(expr.args[0], coeff_tensor))
-        
-        # Handle negative numbers
-        if expr.__class__.__name__ == 'NegativeOne' or (hasattr(expr, 'is_number') and float(expr) < 0):
-            return torch.full((self.n_points, 1), float(expr), device=device)
-        
-        # Default: try to evaluate numerically
-        try:
-            val = float(expr.evalf())
-            return torch.full((self.n_points, 1), val, device=device)
-        except:
-            print(f"Warning: Unknown expression type {type(expr).__name__}: {str(expr)[:50]}")
-            return torch.zeros(self.n_points, 1, device=device)
-    
-    def compute_residual(self, eq, coeff_tensor=None):
-        """Compute residual for a single equation."""
-        return self.evaluate_expr(eq, coeff_tensor)
+        if expression.is_Pow:
+            exponent = expression.exp
+            if not exponent.is_Number:
+                raise ValueError(f"PINN requires a numeric exponent, got {exponent}")
+            return self.evaluate(expression.base) ** float(exponent)
+
+        functions = {
+            sp.sin: self.paddle.sin,
+            sp.cos: self.paddle.cos,
+            sp.exp: self.paddle.exp,
+            sp.tanh: self.paddle.tanh,
+            sp.log: self.paddle.log,
+            sp.Abs: self.paddle.abs,
+            sp.sqrt: self.paddle.sqrt,
+        }
+        if expression.func in functions and len(expression.args) == 1:
+            return functions[expression.func](self.evaluate(expression.args[0]))
+        raise ValueError(
+            f"Unsupported PINN expression node {type(expression).__name__}: {expression}"
+        )
+
+
+def _make_geometry(dde, dimension):
+    if dimension == 1:
+        return dde.geometry.Interval(-1.0, 1.0)
+    return dde.geometry.Hypercube([-1.0] * dimension, [1.0] * dimension)
 
 
 def optimize_with_pinn_impl(calculator, cfg, deci_list, init_params, mse_func=None):
-    """
-    PINN-based coefficient optimization using calculator's symbolic equations.
-    """
-    start_time = time.time()
-    
-    # Get config
-    pinn_cfg = cfg.get("pinn_config", {})
-    epochs = pinn_cfg.get("epochs", 100)
-    lr = pinn_cfg.get("learning_rate", 1e-3)
-    pde_weight = pinn_cfg.get("pde_loss_weight", 1.0)
-    data_weight = pinn_cfg.get("data_loss_weight", 0.1)
-    max_points = pinn_cfg.get("max_points", 5000)
-    
-    # Ensure equations are parsed
-    if len(calculator.sp_equation) == 0:
+    """Fit PiX unknown quantities with a DeepXDE inverse PINN."""
+    del deci_list
+    started = time.perf_counter()
+    config = _read_config(cfg)
+    dde, paddle = _import_backend(config["device"])
+
+    if not calculator.sp_equation:
         calculator.get_sp_equation()
-    
-    # Get data loader info
-    dl = calculator.data_loader
-    field_vars = dl.field_vars
-    spatial_vars = dl.spatial_vars
-    temporal_vars = dl.temporal_vars
-    var_names = spatial_vars + temporal_vars
-    
-    input_dim = len(var_names)
-    n_coeffs = len(init_params)
-    
-    print(f"PINN: Fields: {field_vars}")
-    print(f"PINN: Vars: {var_names}")
-    print(f"PINN: {len(calculator.sp_equation)} equations")
-    print(f"PINN: {n_coeffs} coefficients: {list(calculator.sp_unknown_quantities.keys())}")
-    
-    # Create multi-field neural network
-    field_nets = MultiFieldNet(
-        field_names=field_vars,
-        input_dim=input_dim,
-        hidden_layers=pinn_cfg.get("hidden_layers", 5),
-        neurons=pinn_cfg.get("neurons", 40)
-    ).to(device)
-    
-    # Prepare training data
-    grid_arrays = dl.grids
-    mesh = np.meshgrid(*grid_arrays, indexing='ij')
-    flat_coords = [m.flatten() for m in mesh]
-    database_np = np.column_stack(flat_coords)
-    
-    # Normalize coordinates
-    coord_mins = database_np.min(axis=0)
-    coord_maxs = database_np.max(axis=0)
-    coord_ranges = coord_maxs - coord_mins
-    coord_ranges[coord_ranges == 0] = 1
-    database_np = 2 * (database_np - coord_mins) / coord_ranges - 1
-    
-    # Sample if too large
-    n_total = len(database_np)
-    if n_total > max_points:
-        print(f"PINN: Sampling {max_points} from {n_total} points")
-        np.random.seed(42)
-        indices = np.random.choice(n_total, max_points, replace=False)
-        database_np = database_np[indices]
-        field_data_full = dl.u
-        field_data_sampled = {}
-        for i, field in enumerate(field_vars):
-            flat_data = field_data_full[..., i].flatten()
-            field_data_sampled[field] = flat_data[indices]
-    else:
-        field_data_sampled = {}
-        for i, field in enumerate(field_vars):
-            field_data_sampled[field] = dl.u[..., i].flatten()
-    
-    # Prepare tensors
-    coords = torch.from_numpy(database_np).float().to(device)
-    coords.requires_grad = True
-    
-    field_targets = {}
-    for field in field_vars:
-        field_targets[field] = torch.from_numpy(
-            field_data_sampled[field].reshape(-1, 1)
-        ).float().to(device)
-    
-    # Setup coefficients
-    if n_coeffs > 0:
-        coeffs = Variable(torch.tensor(init_params, dtype=torch.float32, device=device), requires_grad=True)
-        coeff_names = list(calculator.sp_unknown_quantities.keys())
-        params_to_optimize = [{'params': field_nets.parameters(), 'lr': lr},
-                              {'params': [coeffs], 'lr': lr}]
-    else:
-        coeffs = None
-        coeff_names = []
-        params_to_optimize = [{'params': field_nets.parameters(), 'lr': lr}]
-    
-    optimizer = torch.optim.Adam(params_to_optimize)
-    mse_loss = nn.MSELoss()
-    
-    # Create residual computer
-    residual_computer = PDEResidualComputer(
-        calculator, field_nets, coords, var_names, spatial_vars, temporal_vars, coeff_names
+    if not calculator.sp_equation:
+        raise ValueError("PINN requires at least one parsed PiX equation")
+
+    coefficient_names = list(calculator.sp_unknown_quantities)
+    init_params = np.asarray(init_params, dtype=np.float64)
+    if len(coefficient_names) != len(init_params):
+        raise ValueError(
+            f"PINN coefficient mismatch: {len(coefficient_names)} symbols, "
+            f"{len(init_params)} initial values"
+        )
+    if not coefficient_names:
+        loss = float(mse_func(init_params)) if mse_func is not None else 0.0
+        return {
+            "x": init_params,
+            "fun": loss,
+            "pinn_loss": loss,
+            "nit": 0,
+            "status": "NoParameters",
+            "time": time.perf_counter() - started,
+        }
+
+    data_loader = calculator.data_loader
+    coordinate_names = data_loader.spatial_vars + data_loader.temporal_vars
+    if len(data_loader.grids) != len(coordinate_names):
+        raise ValueError(
+            f"PINN grid mismatch: {len(data_loader.grids)} grids for "
+            f"{len(coordinate_names)} coordinates"
+        )
+    if data_loader.u.shape[-1] != len(data_loader.field_vars):
+        raise ValueError("PINN field axis does not match Calculator field variables")
+
+    dde.config.set_random_seed(config["seed"])
+    coordinates, centers, half_ranges = _normalize_coordinates(data_loader.grids)
+    normalized_fields, field_means, field_scales, indices = _normalize_fields(
+        data_loader.u, config["max_points"], config["seed"]
     )
-    
-    # Training loop
-    print(f"PINN: Training for {epochs} epochs...")
-    min_loss = float('inf')
-    best_coeffs = init_params.copy() if n_coeffs > 0 else np.array([])
-    
-    for epoch in tqdm(range(epochs), desc="PINN"):
-        optimizer.zero_grad()
-        
-        # Clear derivative cache each epoch
-        residual_computer.derivative_cache = {}
-        
-        # Data loss
-        loss_data = torch.tensor(0.0, device=device)
-        for field in field_vars:
-            pred = field_nets(coords, field)
-            loss_data += mse_loss(pred, field_targets[field])
-        loss_data = loss_data / len(field_vars)
-        
-        # Physics loss (PDE residual)
-        loss_pde = torch.tensor(0.0, device=device)
-        valid_eqs = 0
-        eq_losses = []
-        
-        for i, eq in enumerate(calculator.sp_equation):
-            try:
-                residual = residual_computer.compute_residual(eq, coeffs)
-                eq_loss = torch.mean(residual**2)
-                eq_losses.append(eq_loss.item())
-                loss_pde += eq_loss
-                valid_eqs += 1
-            except Exception as e:
-                if epoch == 0:
-                    print(f"  Warning: EQ {i} failed: {e}")
-                continue
-        
-        if valid_eqs > 0:
-            loss_pde = loss_pde / valid_eqs
-        
-        if epoch == 0:
-            print(f"  Valid equations: {valid_eqs}/{len(calculator.sp_equation)}")
-            print(f"  EQ losses: {[f'{l:.2e}' for l in eq_losses]}")
-        
-        # Total loss
-        loss = data_weight * loss_data + pde_weight * loss_pde
-        
-        # Check for invalid loss
-        if torch.isnan(loss) or torch.isinf(loss):
-            if epoch == 0:
-                print(f"Warning: Invalid loss at epoch {epoch}, using data loss only")
-            loss = loss_data  # Fall back to data loss only
-            if torch.isnan(loss) or torch.isinf(loss):
-                print(f"Warning: Data loss also invalid at epoch {epoch}, skipping")
-                continue
-        
-        loss.backward()
-        
-        # Gradient clipping (more aggressive)
-        torch.nn.utils.clip_grad_norm_(field_nets.parameters(), 0.1)
-        if coeffs is not None:
-            torch.nn.utils.clip_grad_norm_([coeffs], 0.1)
-        
-        optimizer.step()
-        
-        if loss.item() < min_loss:
-            min_loss = loss.item()
-            if n_coeffs > 0:
-                best_coeffs = coeffs.detach().cpu().numpy().copy()
-        
-        if epoch % 20 == 0 or epoch == epochs - 1:
-            coeff_str = f"coeffs={best_coeffs.round(4)}" if n_coeffs > 0 else ""
-            tqdm.write(f"Epoch {epoch}: data={loss_data.item():.2e}, pde={loss_pde.item():.2e}, total={loss.item():.2e} {coeff_str}")
-    
-    # Final evaluation
-    elapsed = time.time() - start_time
-    
-    # Use mse_func if provided for consistent comparison
-    if mse_func is not None and n_coeffs > 0:
-        try:
-            final_loss = mse_func(best_coeffs)
-        except:
-            final_loss = min_loss
-    else:
-        final_loss = min_loss
-    
-    print(f"PINN: Completed in {elapsed:.2f}s")
-    print(f"PINN: Best coefficients: {best_coeffs}")
-    print(f"PINN: Final loss: {final_loss:.4e}")
-    
+    observation_coordinates = coordinates[indices]
+    residual_scales = _residual_scales(calculator, init_params)
+    coefficients = {
+        name: dde.Variable(float(value))
+        for name, value in zip(coefficient_names, init_params)
+    }
+
+    def pde(normalized_coordinates, normalized_outputs):
+        fields = {
+            name: float(field_means[index]) + float(field_scales[index])
+            * normalized_outputs[:, index:index + 1]
+            for index, name in enumerate(data_loader.field_vars)
+        }
+        evaluator = _PaddleExpressionEvaluator(
+            dde, paddle, calculator, normalized_coordinates, fields, coefficients,
+            centers, half_ranges,
+        )
+        return [
+            evaluator.evaluate(expression) / scale
+            for expression, scale in zip(calculator.sp_equation, residual_scales)
+        ]
+
+    observations = [
+        dde.icbc.PointSetBC(
+            observation_coordinates,
+            normalized_fields[indices, index:index + 1],
+            component=index,
+        )
+        for index in range(len(data_loader.field_vars))
+    ]
+    geometry = _make_geometry(dde, len(coordinate_names))
+    data = dde.data.PDE(
+        geometry,
+        pde,
+        observations,
+        num_domain=0,
+        anchors=observation_coordinates,
+    )
+    network = dde.nn.FNN(
+        [len(coordinate_names)]
+        + [config["neurons"]] * config["hidden_layers"]
+        + [len(data_loader.field_vars)],
+        "tanh",
+        "Glorot normal",
+    )
+    model = dde.Model(data, network)
+    loss_weights = (
+        [float(config["pde_loss_weight"])] * len(calculator.sp_equation)
+        + [float(config["data_loss_weight"])] * len(observations)
+    )
+    model.compile(
+        "adam",
+        lr=float(config["learning_rate"]),
+        loss_weights=loss_weights,
+        external_trainable_variables=list(coefficients.values()),
+    )
+    display_every = config["display_every"] or config["iterations"]
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        loss_history, _ = model.train(
+            iterations=config["iterations"], display_every=display_every
+        )
+
+    fitted = np.asarray(
+        [float(coefficients[name]) for name in coefficient_names], dtype=np.float64
+    )
+    if np.any(~np.isfinite(fitted)):
+        raise RuntimeError(f"PINN produced non-finite coefficients: {fitted}")
+    final_losses = np.asarray(loss_history.loss_train[-1], dtype=np.float64)
+    if np.any(~np.isfinite(final_losses)):
+        raise RuntimeError(f"PINN produced non-finite training losses: {final_losses}")
+    objective = float(mse_func(fitted)) if mse_func is not None else float(final_losses.sum())
+    if not np.isfinite(objective):
+        raise RuntimeError(f"PINN coefficients have non-finite PiX objective: {objective}")
     return {
-        "x": best_coeffs,
-        "fun": final_loss,
-        "pinn_loss": min_loss,
-        "nit": epochs,
+        "x": fitted,
+        "fun": objective,
+        "pinn_loss": float(final_losses.sum()),
+        "pinn_pde_loss": float(final_losses[:len(calculator.sp_equation)].sum()),
+        "pinn_data_loss": float(final_losses[len(calculator.sp_equation):].sum()),
+        "nit": config["iterations"],
         "status": "Success",
-        "time": elapsed
+        "time": time.perf_counter() - started,
     }

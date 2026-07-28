@@ -7,22 +7,21 @@ Provides utilities for:
     - Numerical derivatives and smoothing
 """
 
+from itertools import product
 from typing import List, Union, Tuple
 import numpy as np
 
 from pix.utils.finite_diff import FiniteDiffVand
 
 
-def _spectral_diff(arr, grid, axis=0):
+def _spectral_diff(arr, grid, axis=0, derivative_order=1):
     """
     Compute derivative using spectral (Fourier) differentiation.
     Best for periodic data; has boundary artifacts for non-periodic.
     """
     n = arr.shape[axis]
-    L = grid[-1] - grid[0] + (grid[1] - grid[0])  # approximate period
-    # wave numbers
     k = 2 * np.pi * np.fft.fftfreq(n, d=(grid[1] - grid[0]))
-    
+
     # move axis to front
     trans_idx = list(range(arr.ndim))
     trans_idx[axis] = 0
@@ -30,26 +29,68 @@ def _spectral_diff(arr, grid, axis=0):
     u = arr.transpose(*trans_idx)
     shape = u.shape
     u = u.reshape(n, -1)
-    
+
     ux = np.zeros_like(u)
     for i in range(u.shape[1]):
         u_hat = np.fft.fft(u[:, i])
-        du_hat = 1j * k * u_hat
+        du_hat = (1j * k) ** derivative_order * u_hat
         ux[:, i] = np.fft.ifft(du_hat).real
-    
+
     ux = ux.reshape(shape)
     ux = ux.transpose(*trans_idx)
     return ux
 
 
-def _numpy_gradient(arr, dx, axis=0):
+def _numpy_gradient(arr, dx, axis=0, derivative_order=1):
     """
     Compute derivative using np.gradient (2nd-order central difference).
     Uses scalar spacing for robustness (avoids grid/arr shape mismatch after clipping).
     """
     # np.gradient with scalar spacing works regardless of boundary clipping mismatches
-    grads = np.gradient(arr, dx, axis=axis)
-    return grads
+    result = arr
+    for _ in range(derivative_order):
+        result = np.gradient(result, dx, axis=axis)
+    return result
+
+
+def _differentiate(arr, grid, axis, derivative_order, method):
+    dx = grid[1] - grid[0]
+    if method == "polynomial":
+        return FiniteDiffVand(arr, dx=dx, d=derivative_order, axis=axis)
+    if method == "numpy":
+        return _numpy_gradient(arr, dx, axis=axis, derivative_order=derivative_order)
+    if method == "spectral":
+        return _spectral_diff(
+            arr, grid, axis=axis, derivative_order=derivative_order
+        )
+    raise ValueError(
+        f"Unknown differentiation method: {method}. "
+        "Supported: 'polynomial', 'numpy', 'spectral'"
+    )
+
+
+def np_derivatives(arr, grids, derivative_order, is_time_grad=False, method="polynomial"):
+    """Compute all ordered derivatives of one array at an exact total order."""
+    if derivative_order < 1:
+        raise ValueError(f"derivative_order must be positive, got {derivative_order}")
+    if is_time_grad:
+        axis_sequences = [(len(grids) - 1,) * derivative_order]
+    else:
+        axis_sequences = product(range(len(grids) - 1), repeat=derivative_order)
+
+    derivatives = []
+    for axes in axis_sequences:
+        result = arr
+        for axis in sorted(set(axes)):
+            result = _differentiate(
+                result,
+                grids[axis],
+                axis,
+                derivative_order=axes.count(axis),
+                method=method,
+            )
+        derivatives.append(result)
+    return derivatives
 
 
 def np_grad(
@@ -62,7 +103,7 @@ def np_grad(
     Compute spatial or temporal gradient of NumPy arrays.
     
     Supports multiple differentiation methods:
-    - 'polynomial': Polynomial interpolation via Vandermonde (PiX default, smooth)
+    - 'polynomial': Direct Savitzky-Golay local polynomial differentiation
     - 'numpy':      Standard np.gradient (central finite difference, faithful)
     - 'spectral':   Fourier spectral differentiation (accurate for smooth/periodic data)
     
@@ -93,18 +134,8 @@ def np_grad(
         # Skip temporal derivatives if not requested, skip spatial if temporal requested
         if is_time_grad ^ (axis_idx == len(grids)-1):
             continue
-        dx = grid[1] - grid[0]
-        
         for arr in arr_list:
-            if method == "polynomial":
-                ret.append(FiniteDiffVand(arr, dx=dx, d=1, axis=axis_idx))
-            elif method == "numpy":
-                ret.append(_numpy_gradient(arr, dx, axis=axis_idx))
-            elif method == "spectral":
-                ret.append(_spectral_diff(arr, grid, axis=axis_idx))
-            else:
-                raise ValueError(f"Unknown differentiation method: {method}. "
-                                 f"Supported: 'polynomial', 'numpy', 'spectral'")
+            ret.append(_differentiate(arr, grid, axis_idx, 1, method))
     return ret
 
 def np_grad_all(arr_list, grids, method="polynomial"):
